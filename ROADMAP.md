@@ -155,27 +155,46 @@ profundidade. Tudo aqui é intencionalmente mínimo.
 
 Corte mínimo por camada:
 
-- [ ] `Engine/Core/AstroConstants.cs` — J2000, GM do Sol, segundos por dia
-- [ ] `Engine/Models/Vector3D.cs` — soma, subtração, escala, magnitude. Só isso
-- [ ] `Engine/Models/OrbitalElements.cs` — os seis elementos, sem validação sofisticada
-- [ ] `Engine/Core/TimeEngine.cs` — UTC para JD, acúmulo por delta e multiplicador,
-      pausa. Sem conversão inversa ainda
-- [ ] `Engine/Core/KeplerPropagator.cs` — apenas o caso elíptico, Newton-Raphson simples
-- [ ] `Engine/Data/IBodyRepository.cs` + `HardcodedBodyRepository` com Sol e Terra
-- [ ] `Engine/SimEngine.cs` — lista plana (sem hierarquia), snapshot e evento
-- [ ] `Bridge/ScaleMapper.cs` — só o modo linear
-- [ ] `Bridge/ViewportTransformer.cs` — subtração da câmera em `double`, conversão a `float`
-- [ ] `Bridge/SimBridge.cs` — `_Process` avança o tempo e dispara o snapshot
-- [ ] `Render/CelestialBodyNode.cs` e `Render/SpaceCamera.cs` — andaime 2D, câmera fixa
-- [ ] `Scenes/Main.tscn` e `Scenes/Prefabs/CelestialBody.tscn`
-- [ ] Um botão de play/pause improvisado
+- [x] `Engine/Core/AstroConstants.cs` — J2000, GM do Sol e da Terra, UA, normalização
+      de ângulo
+- [x] `Engine/Models/Vector3D.cs` — `readonly record struct` com operadores, produto
+      escalar e vetorial
+- [x] `Engine/Models/OrbitalElements.cs` — os seis elementos, com fábrica que aceita UA
+      e graus, que é como as tabelas de efemérides publicam
+- [x] `Engine/Models/SystemStateSnapshot.cs` — `BodyState` e o snapshot publicado
+- [x] `Engine/Core/TimeEngine.cs` — UTC para JD e de volta, acúmulo por delta e
+      multiplicador, pausa, tempo reverso
+- [x] `Engine/Core/KeplerPropagator.cs` — caso elíptico com Newton-Raphson e `atan2`
+- [x] `Engine/Data/IBodyRepository.cs` + `HardcodedBodyRepository` com Sol e Terra
+- [x] `Engine/SimEngine.cs` — lista plana, snapshot reaproveitado e evento
+- [x] `Bridge/ScaleMapper.cs` — modo linear e regra provisória de raio visual
+- [x] `Bridge/ViewportTransformer.cs` — subtração da câmera em `double`, conversão a `float`
+- [x] `Bridge/SimBridge.cs` — `_Process` avança o tempo e publica `RenderFrame`
+- [x] `Render/CelestialBodyNode.cs` e `Render/SpaceCamera.cs` — andaime 2D com zoom
+- [x] `UI/TimeControls.cs` — pausa, velocidade e data por teclado
+- [x] `Scenes/Main.tscn` com o `SimBridge` como raiz
+- [x] 23 testes cobrindo tempo, propagador e orquestração
 
 O repositório entra como interface já no M1, com implementação hardcoded, justamente para
 adiar a discussão de schema do JSON até o M3 sem criar dívida: quando o
 `JsonBodyRepository` chegar, ele entra pela mesma porta e nada acima precisa mudar.
 
-**Pronto quando:** a Terra descreve uma volta completa em torno do Sol na tela, com
-play/pause funcionando e velocidade temporal ajustável no código.
+### Desvios em relação ao plano original
+
+- **Conversão JD para UTC entrou antecipada.** O plano deixava a inversa para depois, mas
+  sem ela não há como mostrar a data na tela, e a data é justamente como se confere que a
+  Terra completou uma volta.
+- **A árvore de nós é montada em código, não em `.tscn`.** `Scenes/Prefabs/CelestialBody.tscn`
+  ficou sem uso. Como a decisão entre 2D e 3D só acontece no M6, construir os nós em código
+  evita refazer arquivos de cena. `Main.tscn` tem um nó só, com o `SimBridge`.
+- **`ImplicitUsings` precisou ser ligado** no projeto do Godot; o `Godot.NET.Sdk` não o
+  habilita por padrão, ao contrário dos outros dois projetos.
+
+**Pronto quando:** ~~a Terra descreve uma volta completa em torno do Sol na tela, com
+play/pause funcionando e velocidade temporal ajustável.~~ **Concluído:** build sem avisos,
+23 testes passando, e execução headless de 180 quadros com código de saída 0. A órbita é
+verificada numericamente pelos testes de periélio/afélio e de retorno ao ponto de partida
+após um período.
 
 ---
 

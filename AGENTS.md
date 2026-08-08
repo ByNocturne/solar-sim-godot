@@ -5,9 +5,13 @@ como base para trabalho futuro com missões e transferências orbitais.
 
 ## Estado atual
 
-Marco M0 concluído: o esqueleto compila, o projeto abre no Godot e os testes rodam. Os
-arquivos de código de domínio ainda estão vazios. O próximo passo é o M1, a fatia
-vertical, descrita no [ROADMAP.md](ROADMAP.md).
+Marcos M0 e M1 concluídos: a fatia vertical funciona de ponta a ponta, com a Terra
+orbitando o Sol a partir dos elementos keplerianos reais de J2000. O próximo passo é o M2,
+rigor numérico, descrito no [ROADMAP.md](ROADMAP.md).
+
+Para ver rodando: abra o projeto no Godot e pressione F5, ou
+`godot --path . --resolution 1152x648`. Espaço pausa, setas ajustam a velocidade, R volta
+para J2000, roda do mouse dá zoom.
 
 ## Como construir
 

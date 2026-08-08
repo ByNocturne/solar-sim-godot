@@ -10,10 +10,13 @@ estado como tipo de primeira classe e suporte planejado a órbitas abertas.
 
 ## Estado
 
-**Marco M0 concluído.** O esqueleto compila sem avisos, o projeto abre no Godot e os
-testes rodam com o editor fechado. Os arquivos de domínio ainda estão vazios; o próximo
-passo é o M1, a fatia vertical que coloca a Terra em órbita na tela. O plano completo está
-em [ROADMAP.md](ROADMAP.md), dividido em oito marcos.
+**Marcos M0 e M1 concluídos.** A fatia vertical atravessa todas as camadas: a Terra orbita
+o Sol a partir dos seus elementos keplerianos reais na época J2000, com o tempo controlável
+em tela. O próximo passo é o M2, que valida a precisão contra efemérides do JPL. O plano
+completo está em [ROADMAP.md](ROADMAP.md), dividido em oito marcos.
+
+Controles: espaço pausa, setas ajustam a velocidade do tempo, R volta para J2000, roda do
+mouse dá zoom.
 
 ## Setup
 
