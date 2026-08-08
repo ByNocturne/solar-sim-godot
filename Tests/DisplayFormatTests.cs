@@ -48,6 +48,21 @@ public sealed class DisplayFormatTests
     }
 
     /// <summary>
+    /// A órbita aberta não tem apoápside nem período, e o retrato diz isso com infinito.
+    /// Formatado como número, ele viraria "∞ UA" ou pior, "NaN": o traço é a forma de a
+    /// tela admitir que ali não há valor a mostrar.
+    /// </summary>
+    [Fact]
+    public void ValorQueNaoEFinitoSaiComoTraco()
+    {
+        Assert.Equal("—", DisplayFormat.Distance(double.PositiveInfinity));
+        Assert.Equal("—", DisplayFormat.Duration(double.PositiveInfinity));
+        Assert.Equal("—", DisplayFormat.Speed(double.NaN));
+        Assert.Equal("—", DisplayFormat.Angle(double.NaN));
+        Assert.Equal("—", DisplayFormat.Ratio(double.PositiveInfinity));
+    }
+
+    /// <summary>
     /// O painel precisa mostrar a mesma coisa na máquina de quem desenvolve e na de quem
     /// joga. Sem separadores próprios, um computador configurado em inglês trocaria a
     /// vírgula decimal por ponto e o número mudaria de significado por três ordens de

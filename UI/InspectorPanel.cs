@@ -47,6 +47,7 @@ public partial class InspectorPanel : CanvasLayer
         TrueAnomaly,
         Periapsis,
         Apoapsis,
+        SphereOfInfluence,
     }
 
     private static readonly int RowCount = Enum.GetValues<Row>().Length;
@@ -140,7 +141,12 @@ public partial class InspectorPanel : CanvasLayer
         // dizer para um satélite, cujo movimento em torno do planeta é o assunto.
         var hasOwnParent = !isRoot && parent != report.RootName;
 
-        Set(Row.Orbits, "Orbita", report.ParentName ?? Absent);
+        // Um corpo dinâmico troca de pai ao atravessar a esfera de influência, e o rótulo
+        // avisa que aquele nome é o de agora, não o de sempre.
+        Set(
+            Row.Orbits,
+            report.IsDynamic ? "Orbita agora" : "Orbita",
+            report.ParentName ?? Absent);
         Set(Row.Radius, "Raio", DisplayFormat.Distance(report.RadiusKm));
         Set(
             Row.GravitationalParameter,
@@ -208,6 +214,17 @@ public partial class InspectorPanel : CanvasLayer
             Row.Apoapsis,
             "Apoápside",
             OrbitOnly(DisplayFormat.Distance(report.ApoapsisKm)));
+
+        // Sem massa não há esfera, e a da raiz é infinita: nos dois casos não há número a
+        // mostrar. O primeiro caso é o de toda sonda, justamente o corpo que mais
+        // atravessa esferas alheias.
+        Show(
+            Row.SphereOfInfluence,
+            report.SphereOfInfluenceKm > 0.0 && double.IsFinite(report.SphereOfInfluenceKm));
+        Set(
+            Row.SphereOfInfluence,
+            "Esfera de influência",
+            DisplayFormat.Distance(report.SphereOfInfluenceKm));
     }
 
     private void ShowNothing()

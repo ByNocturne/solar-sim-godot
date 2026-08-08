@@ -5,20 +5,24 @@ como base para trabalho futuro com missões e transferências orbitais.
 
 ## Estado atual
 
-Marcos M0 a M6 concluídos e verificados em execução. O motor carrega
+Os oito marcos, M0 a M7, estão concluídos e verificados em execução. O motor carrega
 o Sistema Solar de `Data/solar_system_j2000.json` — Sol, oito planetas, a Lua, as
 galileanas e Titã — compõe a posição de cada corpo a partir da do pai e produz posição e
 velocidade, com erro radial abaixo de 0,02% contra as efemérides DE441 do JPL. A
 apresentação é tridimensional com projeção ortográfica, escala hierárquica com modo
 logarítmico e linear, câmera ancorável e orbitável e desenho de órbitas, com árvore do
-sistema, barra de tempo e inspetor de corpo. O próximo passo é o M7, as fundações para
-missões, descrito no [ROADMAP.md](ROADMAP.md).
+sistema, barra de tempo e inspetor de corpo. O M7 acrescentou o que falta para missões:
+trajetórias hiperbólicas, conversão de vetor de estado em elementos, corpos criados em
+runtime, emenda de cônicas por esfera de influência e save/load. O que vem depois está no
+backlog do [ROADMAP.md](ROADMAP.md).
 
 Para ver rodando: abra o projeto no Godot e pressione F5, ou `godot --path .`. Espaço pausa, setas ajustam a velocidade, R volta
 para J2000, Tab e Shift+Tab ancoram a câmera no corpo seguinte e no anterior, um clique
 ancora no corpo apontado, L alterna entre escala logarítmica e linear, N mostra ou esconde
 os nomes, Home devolve a vista inicial, H mostra a lista de atalhos, a roda dá zoom, o
-botão direito gira a câmera e o do meio — ou Shift com o direito — arrasta.
+botão direito gira a câmera e o do meio — ou Shift com o direito — arrasta. P e Shift+P
+soltam uma sonda em órbita ou em fuga do corpo ancorado, Delete descarta a sonda ancorada,
+F5 salva e F9 carrega.
 
 ## Como construir
 
@@ -37,6 +41,7 @@ Para conferir a tela sem depender de alguém olhando, o modo Movie Maker grava a
 uma sequência de PNG, no tamanho declarado em `project.godot`:
 
 ```bash
+mkdir frames   # sem a pasta o Godot falha quadro a quadro e nao grava nada
 dotnet build   # o Godot roda o assembly ja compilado, e nao recompila sozinho
 godot --path . --write-movie frames/f.png --fixed-fps 60 --quit-after 70
 ```
@@ -87,6 +92,18 @@ lua é editá-lo. A unidade está no nome do campo — `radiusKm`, `inclinationD
 e a carga converte graus para radianos e unidades astronômicas para quilômetros. A
 validação recusa pai inexistente, ciclo na hierarquia, campo ausente e campo com nome
 desconhecido, sempre dizendo qual corpo e qual campo.
+
+## Corpos que não vêm do arquivo
+
+Uma sonda entra por `SimEngine.AddFromState`, a partir de posição e velocidade relativas
+ao pai; a órbita não é escolhida, e sim consequência do estado. Um corpo assim carrega uma
+`Trajectory` — a lista de arcos por onde passou — em vez de uma órbita só, e é o único
+tipo de corpo que a emenda de cônicas reatribui a outro pai ao atravessar uma esfera de
+influência. `SaveState` grava a Data Juliana e esses corpos, e mais nada: o estado do que
+veio do JSON é função da data.
+
+Trajetórias hiperbólicas são suportadas, com o semi-eixo negativo; a parábola exata é
+recusada com mensagem explícita, tanto na carga quanto na conversão inversa.
 
 ## Os quatro invariantes
 

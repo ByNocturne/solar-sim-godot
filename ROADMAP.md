@@ -611,25 +611,105 @@ estruturas desde o M1.
   com energia específica e momento angular (antecipado no M2)
   ```
 - [x] Conversão `OrbitalElements` para `StateVector` via `KeplerPropagator.StateAt`
-- [ ] Conversão inversa `StateVector` para `OrbitalElements` — o problema inverso, que é o
+- [x] Conversão inversa `StateVector` para `OrbitalElements` — o problema inverso, que é o
   ```
   que permite criar um corpo a partir de posição e velocidade arbitrárias, e portanto
   o que permite existir uma nave
   ```
-- [ ] Órbitas com `e >= 1`: hiperbólicas e parabólicas. Toda transferência e todo sobrevoo
+- [x] Órbitas com `e > 1`: hiperbólicas. A parábola exata foi recusada, e a justificativa
   ```
-  passam por trajetórias abertas, então isso deixa de ser caso exótico
+  está abaixo
   ```
-- [ ] Avaliar a formulação por variáveis universais, que trata todas as cônicas com um
+- [x] ~~Avaliar a formulação por variáveis universais~~ — avaliada e recusada; a
   ```
-  único solver, em lugar de ramificar por tipo de órbita
+  justificativa está abaixo
   ```
-- [ ] Registro dinâmico de corpos em runtime, com adição e remoção fora do JSON
-- [ ] Esfera de influência e reatribuição de corpo pai (cônicas emendadas)
-- [ ] Save/load, que graças ao invariante 4 é serializar `JD` mais os corpos dinâmicos
+- [x] Registro dinâmico de corpos em runtime, com adição e remoção fora do JSON
+- [x] Esfera de influência e reatribuição de corpo pai (cônicas emendadas)
+- [x] Save/load, que graças ao invariante 4 é serializar `JD` mais os corpos dinâmicos
 
-**Pronto quando:** é possível inserir um corpo em runtime a partir de um vetor de estado
-arbitrário, e ele é propagado corretamente junto com o resto do sistema.
+### Decisões e desvios
+
+**A parábola exata foi recusada, e não esquecida.** Com `e` exatamente 1 o semi-eixo maior
+é infinito e a metade da formulação deixa de existir: não há período, não há anomalia
+média no sentido usual, e `a(1-e²)` vira zero vezes infinito. Pior, é um caso de medida
+nula — nenhuma trajetória real tem `e = 1`, e uma que tivesse deixaria de ter na primeira
+correção de rumo. `OrbitalElements.RequireRepresentableEccentricity` recusa a faixa em
+torno de 1 dizendo isso, tanto na carga do JSON quanto na conversão inversa, em vez de
+aceitar o valor e produzir `NaN` três camadas adiante. O semi-latus rectum é o que segura
+a geometria nos dois ramos, e é ele, e não o semi-eixo, que a equação da cônica usa.
+
+**As variáveis universais foram avaliadas e recusadas.** Elas resolvem exatamente um
+problema: a transição contínua entre elipse, parábola e hipérbole, com um solver só. Como
+a parábola saiu do domínio pela decisão anterior, o que sobraria seria trocar dois ramos
+curtos — cada um com equação de Kepler conhecida, chute inicial estudado e convergência
+medida em menos de dez iterações — por funções de Stumpff, um chute inicial menos óbvio e
+uma reescrita do propagador que é justamente a peça com regressão contra o JPL desde o M2.
+O custo é alto, o ganho é um caso que não existe, e a porta continua aberta: a decisão
+está isolada atrás de `KeplerPropagator.StateAt`.
+
+**Um corpo dinâmico tem trajetória, não órbita.** `Trajectory` é uma lista de
+`TrajectoryArc`, cada arco com o instante em que começa, quem atraía o corpo e os
+elementos daquele trecho. É o que permite consultar uma data anterior a uma emenda e
+receber a resposta certa — sem isso, o invariante 4 se perderia justamente nos corpos
+mais interessantes. O tempo reverso desfaz a emenda em vez de ignorá-la: um arco que
+começa no futuro deixa de existir, e será redescoberto se o tempo voltar a passar ali.
+
+**A emenda sai do vetor de estado, e por isso não dá salto.** Ao trocar de pai, o estado
+global no instante da troca é medido em relação ao novo atrator e convertido em elementos.
+Posição e velocidade no referencial global são as mesmas antes e depois; o que muda é só
+quem é considerado responsável pela curva. É o teste que fecha o critério da emenda, e ele
+mede a descontinuidade em metros e em milímetros por segundo.
+
+**A árvore estática continua sendo a fonte da verdade para quem consulta.** Quando um arco
+novo entra, o `CelestialBodyData` do corpo é reescrito com o pai e os elementos de agora.
+O inspetor, a árvore do sistema e o desenho da órbita continuam perguntando as mesmas
+coisas de sempre, e nenhum deles precisa saber que arcos existem. `CelestialBodyData`
+virou `record` para que essa reescrita seja uma expressão `with`, e não mutação.
+
+**O arquivo salvo não contém o Sistema Solar.** Pelo invariante 4, o estado de tudo o que
+veio do JSON é função da data: gravá-lo seria gravar uma cópia redundante que ainda por
+cima envelheceria mal se o arquivo de dados mudasse. O salvamento é a Data Juliana mais os
+corpos que não estão no JSON, com a trajetória inteira — o histórico de emendas é o único
+dado que não pode ser redescoberto, porque depende de por onde o corpo passou.
+
+**A órbita passou a ser amostrada por anomalia verdadeira, e não por tempo.** É o que faz
+a mesma rotina desenhar a elipse e a hipérbole: a hipérbole não tem período para dividir
+em partes iguais. De quebra, a amostragem uniforme em ângulo concentra pontos perto do
+periápside, que é onde a curvatura está. O traço aberto vai de assíntota a assíntota e não
+fecha, parando a 92% do ângulo assintótico — a hipérbole vai ao infinito, e o resto seria
+gastar vértices em uma reta.
+
+**A conversão inversa usa** `atan2` **onde o livro usa** `acos`**.** Perto de inclinação
+zero o cosseno é estacionário e o arco-cosseno amplifica o erro de arredondamento; a
+Terra, com inclinação tabelada de -0,0000153°, era o caso que denunciava isso. Ω e ω saem
+normalizados em `[0, 2π)`, e uma inclinação tabelada negativa volta como a forma canônica
+equivalente: inclinação positiva com meia volta somada aos dois ângulos. É a mesma
+trajetória, e existe um teste que verifica exatamente essa equivalência.
+
+### Validação
+
+Três frentes, além dos testes de propriedade:
+
+- **Regressão contra o JPL Horizons para 1I/'Oumuamua**, o objeto interestelar com
+`e = 1,20`. Na época dos elementos o estado bate com o do JPL até praticamente o número de
+máquina; a 40 dias de distância o erro fica em 0,3% na posição, compatível com a
+aceleração não gravitacional conhecida do objeto, que o modelo de dois corpos não tem.
+- **Cruzamento com integração numérica.** Um Runge-Kutta de quarta ordem integra a mesma
+condição inicial ao longo de uma passagem pelo periápside, na elipse e na hipérbole, e
+concorda com o propagador analítico. São duas rotas independentes para o mesmo número.
+- **Verificação em execução**, pelo modo Movie Maker: uma sonda solta da Terra a 1,15 vez
+a velocidade de escape aparece na árvore, sai da esfera de influência da Terra dentro dos
+27 dias simulados do trecho gravado e reaparece pendurada no Sol, com a elipse
+heliocêntrica dela desenhada — periélio 0,95 UA, afélio 1,37 UA. Salvar e carregar pelo
+`FileAccess` do Godot foi exercitado no mesmo caminho.
+
+**Pronto quando:** ~~é possível inserir um corpo em runtime a partir de um vetor de estado
+arbitrário, e ele é propagado corretamente junto com o resto do sistema.~~ **Concluído:**
+inserir uma sonda a partir de posição e velocidade devolve, no instante da inserção, o
+mesmo vetor de estado que foi dado, e a partir dali ela propaga junto com o resto —
+inclusive trocando de atrator ao atravessar a esfera de influência. Build sem avisos e
+386 testes passando, sendo 252 novos.
 
 ---
 
@@ -649,17 +729,21 @@ solar-sim-godot/
 │   ├── Core/
 │   │   ├── AstroConstants.cs        # novo — constantes e unidades
 │   │   ├── TimeEngine.cs
-│   │   └── KeplerPropagator.cs
+│   │   ├── KeplerPropagator.cs      # elipse e hipérbole, em ramos separados (M7)
+│   │   ├── OrbitDetermination.cs    # estado para elementos, o inverso (M7)
+│   │   └── SphereOfInfluence.cs     # raio de Laplace (M7)
 │   ├── Models/
 │   │   ├── CelestialBodyData.cs
 │   │   ├── OrbitalElements.cs
-│   │   ├── StateVector.cs           # novo — posição + velocidade (M7)
+│   │   ├── StateVector.cs           # posição + velocidade (M7)
+│   │   ├── Trajectory.cs            # arcos emendados de um corpo dinâmico (M7)
 │   │   └── Vector3D.cs
 │   ├── Data/
 │   │   ├── IBodyRepository.cs       # inversão de dependência
 │   │   ├── DataLoader.cs            # JSON para unidades internas, com validação
 │   │   ├── JsonBodyRepository.cs
 │   │   ├── BodyHierarchy.cs         # ordem de avaliação e detecção de ciclo
+│   │   ├── SaveState.cs             # JD + corpos dinâmicos, e nada mais (M7)
 │   │   └── SystemDataException.cs
 │   └── SimEngine.cs
 ├── Bridge/                          # CAMADA DE ADAPTAÇÃO

@@ -44,12 +44,28 @@ public readonly record struct BodyReport
     /// <summary>Elementos da órbita. Nulos para a raiz, que não orbita nada.</summary>
     public OrbitalElements? Elements { get; init; }
 
-    /// <summary>Período orbital. Zero quando não há órbita fechada.</summary>
+    /// <summary>
+    /// Período orbital. Infinito quando a órbita é aberta, porque não há volta a
+    /// completar.
+    /// </summary>
     public double PeriodDays { get; init; }
 
     public double PeriapsisKm { get; init; }
 
+    /// <summary>Infinito na órbita aberta.</summary>
     public double ApoapsisKm { get; init; }
+
+    /// <summary>
+    /// Raio da esfera de influência deste corpo. Zero para quem não tem massa e infinito
+    /// para a raiz.
+    /// </summary>
+    public double SphereOfInfluenceKm { get; init; }
+
+    /// <summary>
+    /// Verdadeiro para um corpo acrescentado em tempo de execução, que é quem pode trocar
+    /// de corpo pai e quem entra no arquivo salvo.
+    /// </summary>
+    public bool IsDynamic { get; init; }
 
     /// <summary>
     /// Ângulo entre o periápside e a posição atual, medido no foco. É o único elemento
@@ -86,6 +102,8 @@ public readonly record struct BodyReport
             DistanceToRootKm = (global.PositionKm - rootState.PositionKm).Magnitude,
             SpeedRelativeToParentKmS = local.VelocityKmS.Magnitude,
             SpeedRelativeToRootKmS = (global.VelocityKmS - rootState.VelocityKmS).Magnitude,
+            SphereOfInfluenceKm = sim.SphereOfInfluenceKm(bodyId),
+            IsDynamic = sim.IsDynamic(bodyId),
         };
 
         if (body.Elements is not { } elements)
@@ -94,21 +112,19 @@ public readonly record struct BodyReport
         }
 
         var mu = sim.GravitationalParameterOf(bodyId);
-        var meanAnomaly = KeplerPropagator.MeanAnomalyAt(
+
+        var trueAnomaly = KeplerPropagator.TrueAnomalyAt(
             elements, mu, julianDate - AstroConstants.J2000);
-        var eccentricAnomaly = KeplerPropagator.SolveEccentricAnomaly(
-            meanAnomaly, elements.Eccentricity);
 
         return report with
         {
             Elements = elements,
             PeriodDays = elements.IsClosed
                 ? KeplerPropagator.OrbitalPeriodDays(elements.SemiMajorAxisKm, mu)
-                : 0.0,
-            PeriapsisKm = elements.SemiMajorAxisKm * (1.0 - elements.Eccentricity),
-            ApoapsisKm = elements.SemiMajorAxisKm * (1.0 + elements.Eccentricity),
-            TrueAnomalyRad = AstroConstants.NormalizeAngle(
-                KeplerPropagator.TrueAnomalyFrom(eccentricAnomaly, elements.Eccentricity)),
+                : double.PositiveInfinity,
+            PeriapsisKm = elements.PeriapsisKm,
+            ApoapsisKm = elements.ApoapsisKm,
+            TrueAnomalyRad = AstroConstants.NormalizeAngle(trueAnomaly),
         };
     }
 }

@@ -33,8 +33,23 @@ public partial class SimBridge : Node3D
 
     private const int OrbitSamples = 240;
 
+    /// <summary>
+    /// Quanto de uma órbita aberta é desenhado, em anomalia verdadeira, como fração do
+    /// ângulo da assíntota. A hipérbole vai ao infinito, então o traço tem de parar em
+    /// algum lugar; parar um pouco antes da assíntota mostra a curvatura sem gastar
+    /// vértices em uma reta.
+    /// </summary>
+    private const double OpenOrbitSpan = 0.92;
+
+    /// <summary>Onde o jogo salvo é gravado, no diretório de dados do usuário.</summary>
+    private const string SavePath = "user://savegame.json";
+
     private readonly Dictionary<string, Vector3> _renderPositions = new(StringComparer.Ordinal);
     private readonly Dictionary<string, string?> _parents = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, Node3D> _bodyNodes = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, OrbitLineRenderer> _orbitNodes =
+        new(StringComparer.Ordinal);
+
     private readonly CameraRig _rig = new();
 
     private SimEngine _sim = null!;
@@ -47,6 +62,12 @@ public partial class SimBridge : Node3D
 
     public event Action<RenderFrame>? FrameReady;
 
+    /// <summary>
+    /// A lista de corpos mudou, ou um deles trocou de pai. Quem espelha a árvore precisa
+    /// remontá-la: o evento de quadro carrega posições, e não estrutura.
+    /// </summary>
+    public event Action? StructureChanged;
+
     // Não se chama Scale porque Node3D já tem uma propriedade com esse nome.
     public ScaleMapper ScaleMap => _projector.Mapper;
 
@@ -54,6 +75,9 @@ public partial class SimBridge : Node3D
     public IReadOnlyList<CelestialBodyData> Bodies => _sim.Bodies;
 
     public string? AnchorBodyId => _rig.AnchorBodyId;
+
+    /// <summary>Quantos corpos foram acrescentados em tempo de execução.</summary>
+    public int DynamicBodyCount => _sim.DynamicBodyIds.Count;
 
     /// <summary>Nome legível do corpo ancorado, para exibição.</summary>
     public string AnchorName
@@ -98,6 +122,7 @@ public partial class SimBridge : Node3D
         BuildSceneTree();
 
         _sim.SystemUpdated += OnSystemUpdated;
+        _sim.StructureChanged += OnStructureChanged;
     }
 
     public override void _Process(double delta)
@@ -173,6 +198,146 @@ public partial class SimBridge : Node3D
         => BodyReport.For(_sim, bodyId, _sim.Time.JulianDate);
 
     /// <summary>
+    /// Solta uma sonda a partir do corpo ancorado e ancora a câmera nela.
+    /// </summary>
+    /// <param name="escapeFactor">
+    /// Fração da velocidade de escape. Abaixo de 1 a sonda fica em órbita; acima, escapa
+    /// e a emenda de cônicas acaba entregando-a ao corpo de cima.
+    /// </param>
+    /// <returns>O identificador da sonda, ou nulo se não houver de onde soltá-la.</returns>
+    public string? LaunchProbe(double escapeFactor)
+    {
+        if (_rig.AnchorBodyId is not { } hostId)
+        {
+            return null;
+        }
+
+        var host = _sim.BodyOf(hostId);
+
+        // Sem massa não há órbita em torno do corpo, e a sonda cairia em cima dele.
+        if (host.MuKm3S2 <= 0.0)
+        {
+            return null;
+        }
+
+        // Três raios de distância: fora do corpo desenhado, e ainda bem dentro da esfera
+        // de influência de qualquer um dos corpos do arquivo.
+        var radiusKm = Math.Max(host.RadiusKm, 1.0) * 3.0;
+        var escapeKmS = Math.Sqrt(2.0 * host.MuKm3S2 / radiusKm);
+        var speedKmS = escapeKmS * escapeFactor;
+
+        // Inclinada, para que a sonda não se confunda com o plano do sistema.
+        var state = new StateVector(
+            new Vector3D(radiusKm, 0.0, 0.0),
+            new Vector3D(0.0, speedKmS * 0.87, speedKmS * 0.5));
+
+        var id = NextProbeId();
+
+        _sim.AddFromState(
+            new CelestialBodyData
+            {
+                Id = id,
+                Name = $"Sonda {_sim.DynamicBodyIds.Count + 1}",
+                ParentId = hostId,
+                MuKm3S2 = 0.0,
+                RadiusKm = 0.0,
+                ColorRgb = 0xFFE066,
+            },
+            state,
+            _sim.Time.JulianDate);
+
+        AnchorTo(id);
+
+        return id;
+    }
+
+    /// <summary>
+    /// Remove o corpo ancorado, se ele tiver sido acrescentado em runtime, e devolve a
+    /// âncora ao pai dele.
+    /// </summary>
+    public bool RemoveAnchoredBody()
+    {
+        if (_rig.AnchorBodyId is not { } bodyId || !_sim.IsDynamic(bodyId))
+        {
+            return false;
+        }
+
+        var parentId = _sim.BodyOf(bodyId).ParentId;
+
+        _sim.Remove(bodyId);
+        AnchorTo(parentId ?? _sim.Root.Id);
+
+        return true;
+    }
+
+    /// <summary>
+    /// Grava a simulação. O arquivo é pequeno por construção: o Sistema Solar não entra
+    /// nele, porque o estado dele é função da data.
+    /// </summary>
+    public void Save()
+    {
+        using var file = Godot.FileAccess.Open(SavePath, Godot.FileAccess.ModeFlags.Write);
+
+        if (file is null)
+        {
+            GD.PushError($"Não foi possível gravar '{SavePath}': "
+                + $"{Godot.FileAccess.GetOpenError()}.");
+            return;
+        }
+
+        file.StoreString(SaveState.Serialize(_sim));
+    }
+
+    /// <summary>Restaura a simulação gravada, se houver alguma.</summary>
+    public bool Load()
+    {
+        if (!Godot.FileAccess.FileExists(SavePath))
+        {
+            return false;
+        }
+
+        using var file = Godot.FileAccess.Open(SavePath, Godot.FileAccess.ModeFlags.Read);
+
+        if (file is null)
+        {
+            GD.PushError($"Não foi possível ler '{SavePath}': "
+                + $"{Godot.FileAccess.GetOpenError()}.");
+            return false;
+        }
+
+        try
+        {
+            SaveState.Restore(_sim, file.GetAsText());
+        }
+        catch (SystemDataException erro)
+        {
+            GD.PushError($"Arquivo salvo inválido: {erro.Message}");
+            return false;
+        }
+
+        // A âncora pode ter sido descartada junto com os corpos dinâmicos antigos.
+        if (_rig.AnchorBodyId is { } anchor && !_sim.Contains(anchor))
+        {
+            AnchorTo(_sim.Root.Id);
+        }
+
+        return true;
+    }
+
+    private string NextProbeId()
+    {
+        for (var numero = 1; ; numero++)
+        {
+            var id = $"probe{numero}";
+
+            if (!_sim.Contains(id))
+            {
+                return id;
+            }
+        }
+    }
+
+    /// <summary>
     /// Corpo cuja projeção na tela cai mais perto do ponto apontado, dentro do raio
     /// informado. Devolve nulo se o clique caiu no vazio, para que clicar no fundo não
     /// desancore por acidente.
@@ -202,9 +367,13 @@ public partial class SimBridge : Node3D
     }
 
     /// <summary>
-    /// Amostra uma órbita completa em coordenadas relativas ao pai, em km. Fixa no tempo:
-    /// os elementos não mudam, então isso é calculado uma vez por corpo.
+    /// Amostra a órbita em coordenadas relativas ao pai, em km.
     /// </summary>
+    /// <remarks>
+    /// A amostragem é por anomalia verdadeira, e não por tempo: é o que faz a mesma
+    /// rotina servir à elipse e à hipérbole. Na elipse o traço dá a volta inteira; na
+    /// hipérbole vai de uma assíntota à outra, sem fechar.
+    /// </remarks>
     public Vector3D[] SampleOrbitKm(string bodyId)
     {
         if (_sim.ElementsOf(bodyId) is not { } elements)
@@ -212,19 +381,33 @@ public partial class SimBridge : Node3D
             return [];
         }
 
-        var periodDays = KeplerPropagator.OrbitalPeriodDays(
-            elements.SemiMajorAxisKm, _sim.GravitationalParameterOf(bodyId));
-
+        var mu = _sim.GravitationalParameterOf(bodyId);
         var samples = new Vector3D[OrbitSamples];
+
+        // A elipse fecha, então o último ponto não repete o primeiro: quem desenha é que
+        // emenda os dois. A hipérbole vai de assíntota a assíntota, e os extremos entram.
+        var span = elements.IsClosed
+            ? Math.PI
+            : Math.Acos(-1.0 / elements.Eccentricity) * OpenOrbitSpan;
+
+        var step = elements.IsClosed
+            ? 2.0 * span / OrbitSamples
+            : 2.0 * span / (OrbitSamples - 1.0);
 
         for (var index = 0; index < OrbitSamples; index++)
         {
-            var julianDate = AstroConstants.J2000 + (periodDays * index / OrbitSamples);
-            samples[index] = _sim.LocalStateAt(bodyId, julianDate).PositionKm;
+            var trueAnomaly = -span + (step * index);
+
+            samples[index] =
+                KeplerPropagator.StateAtTrueAnomaly(elements, mu, trueAnomaly).PositionKm;
         }
 
         return samples;
     }
+
+    /// <summary>Verdadeiro se a órbita do corpo fecha, e portanto o traço dela também.</summary>
+    public bool HasClosedOrbit(string bodyId)
+        => _sim.ElementsOf(bodyId) is { } elements && elements.IsClosed;
 
     /// <summary>Converte uma amostra local em km para o deslocamento em pixels.</summary>
     public Vector3 OrbitSampleToPixels(Vector3D localKm, string parentId)
@@ -261,30 +444,12 @@ public partial class SimBridge : Node3D
         // As órbitas entram antes dos corpos para ficarem atrás deles no desenho.
         foreach (var body in _sim.Bodies.Where(body => body.ParentId is not null))
         {
-            var orbit = new OrbitLineRenderer
-            {
-                Name = $"{body.Id}_orbit",
-                BodyId = body.Id,
-                ParentBodyId = body.ParentId!,
-                LineColor = BodyPalette.Of(body.ColorRgb) with { A = 0.35f },
-            };
-
-            AddChild(orbit);
-            orbit.Attach(this);
+            AddOrbitNode(body);
         }
 
         foreach (var body in _sim.Bodies)
         {
-            var node = new CelestialBodyNode
-            {
-                Name = body.Id,
-                BodyId = body.Id,
-                BodyColor = BodyPalette.Of(body.ColorRgb),
-                DisplayRadius = (float)ScaleMap.BodyRadiusPixels(body.RadiusKm),
-            };
-
-            AddChild(node);
-            node.Attach(this);
+            AddBodyNode(body);
         }
 
         var camera = new SpaceCamera { Name = "SpaceCamera" };
@@ -315,6 +480,95 @@ public partial class SimBridge : Node3D
         var inspector = new InspectorPanel { Name = "InspectorPanel" };
         AddChild(inspector);
         inspector.Attach(this);
+    }
+
+    private void AddOrbitNode(CelestialBodyData body)
+    {
+        var orbit = new OrbitLineRenderer
+        {
+            Name = $"{body.Id}_orbit",
+            BodyId = body.Id,
+            ParentBodyId = body.ParentId!,
+            LineColor = BodyPalette.Of(body.ColorRgb) with { A = 0.35f },
+        };
+
+        AddChild(orbit);
+        orbit.Attach(this);
+
+        _orbitNodes[body.Id] = orbit;
+    }
+
+    private void AddBodyNode(CelestialBodyData body)
+    {
+        var node = new CelestialBodyNode
+        {
+            Name = body.Id,
+            BodyId = body.Id,
+            BodyColor = BodyPalette.Of(body.ColorRgb),
+            DisplayRadius = (float)ScaleMap.BodyRadiusPixels(body.RadiusKm),
+        };
+
+        AddChild(node);
+        node.Attach(this);
+
+        _bodyNodes[body.Id] = node;
+    }
+
+    /// <summary>
+    /// Refaz o que a mudança de estrutura invalidou: nós de corpos que entraram ou
+    /// saíram, e o traço de quem trocou de pai ou de órbita. Os corpos do arquivo não são
+    /// tocados, porque a órbita deles não muda.
+    /// </summary>
+    private void OnStructureChanged()
+    {
+        var vivos = _sim.Bodies.Select(body => body.Id).ToHashSet(StringComparer.Ordinal);
+
+        foreach (var id in _bodyNodes.Keys.Where(id => !vivos.Contains(id)).ToArray())
+        {
+            _bodyNodes[id].QueueFree();
+            _bodyNodes.Remove(id);
+            _renderPositions.Remove(id);
+            _parents.Remove(id);
+        }
+
+        foreach (var id in _orbitNodes.Keys.Where(id => !vivos.Contains(id)).ToArray())
+        {
+            _orbitNodes[id].QueueFree();
+            _orbitNodes.Remove(id);
+        }
+
+        foreach (var body in _sim.Bodies)
+        {
+            _parents[body.Id] = body.ParentId;
+
+            if (!_bodyNodes.ContainsKey(body.Id))
+            {
+                AddBodyNode(body);
+            }
+
+            if (body.ParentId is not { } parentId)
+            {
+                continue;
+            }
+
+            // Trocar de pai muda o nó sobre o qual o traço se apoia, e a emenda de
+            // cônicas troca os elementos junto: refazer o traço é obrigatório, não uma
+            // otimização perdida.
+            if (_orbitNodes.TryGetValue(body.Id, out var orbit))
+            {
+                if (_sim.IsDynamic(body.Id))
+                {
+                    orbit.ParentBodyId = parentId;
+                    orbit.Resample(this);
+                }
+            }
+            else
+            {
+                AddOrbitNode(body);
+            }
+        }
+
+        StructureChanged?.Invoke();
     }
 
     private void OnSystemUpdated(SystemStateSnapshot snapshot)

@@ -6,11 +6,11 @@ diretamente a partir da data, sem integração numérica de forças.
 
 O projeto é desenhado como base para trabalho futuro com missões e transferências
 orbitais, o que influencia decisões desde o início: unidades da astrodinâmica, vetores de
-estado como tipo de primeira classe e suporte planejado a órbitas abertas.
+estado como tipo de primeira classe e órbitas abertas.
 
 ## Estado
 
-**Marcos M0 a M6 concluídos.** O simulador carrega
+**Os oito marcos, M0 a M7, estão concluídos.** O simulador carrega
 o Sistema Solar de um arquivo JSON — Sol, oito planetas, a Lua, as galileanas e Titã —
 propaga cada corpo em torno do seu e desenha as órbitas, com a câmera ancorável em
 qualquer corpo. O motor está validado contra as efemérides DE441 do JPL Horizons: erro
@@ -18,14 +18,20 @@ máximo de 0,0132% na distância radial ao longo de 26 anos simulados. A interfa
 árvore do sistema, barra de tempo com salto para uma data arbitrária e inspetor com os
 elementos orbitais do corpo ancorado. A apresentação é tridimensional, com projeção
 ortográfica: girar a câmera revela a inclinação das órbitas, que existe nos dados desde o
-começo. O próximo passo é o M7, as fundações para missões. O plano está em
-[ROADMAP.md](ROADMAP.md), dividido em oito marcos.
+começo.
+
+Com o M7 é possível soltar uma sonda a partir de um vetor de estado arbitrário e vê-la
+propagar junto com o resto — inclusive em trajetória hiperbólica, e trocando de corpo
+atrator ao atravessar uma esfera de influência. O que vem depois está no
+[ROADMAP.md](ROADMAP.md), no backlog.
 
 Controles: espaço pausa, setas ajustam a velocidade do tempo, R volta para J2000, Tab e
 Shift+Tab ancoram a câmera no corpo seguinte e no anterior, um clique ancora no corpo
 apontado, L alterna entre escala logarítmica e linear, N mostra ou esconde os nomes, Home
 devolve a vista inicial, H mostra a lista de atalhos, a roda dá zoom, o botão direito gira
-a câmera e o do meio — ou Shift com o direito — arrasta.
+a câmera e o do meio — ou Shift com o direito — arrasta. P solta uma sonda em órbita do
+corpo ancorado e Shift+P a solta em fuga; Delete descarta a sonda ancorada; F5 salva e F9
+carrega.
 
 ## Setup
 
@@ -89,6 +95,26 @@ relação com a das distâncias, porque em proporção real a Terra teria centé
 Quanto espaço cada nível recebe é fração da altura da janela, e não uma contagem fixa de
 pixels: assim a mesma calibragem serve para qualquer resolução, em vez de deixar o sistema
 encolhido no meio de uma tela grande.
+
+## Cônicas emendadas
+
+Um corpo acrescentado em tempo de execução não tem uma órbita, e sim uma trajetória: uma
+lista de arcos, cada um com o instante em que começa, quem atraía o corpo e os elementos
+daquele trecho. Quando a sonda sai da esfera de influência do corpo pai, ou entra na de
+outro, o estado dela naquele instante é medido em relação ao novo atrator e vira o arco
+seguinte. Como os dois arcos saem do mesmo vetor de estado, a posição e a velocidade não
+dão salto: o que muda é quem é considerado responsável pela curva.
+
+Guardar os arcos, em vez de só a órbita de agora, é o que preserva o invariante 4 para
+esses corpos — consultar uma data anterior a uma emenda devolve o que valia naquela época,
+e o tempo reverso desfaz a emenda em vez de ignorá-la.
+
+Trajetórias com `e > 1` são suportadas; a parábola exata, não. Com `e` igual a 1 o
+semi-eixo maior é infinito e metade da formulação deixa de existir, e nenhuma trajetória
+real fica nesse valor. Pedir uma resulta em erro explícito, e não em `NaN` mais adiante.
+
+Salvar é gravar a Data Juliana e esses corpos, com a trajetória inteira. O Sistema Solar
+não entra no arquivo: o estado dele é função da data.
 
 ## Unidades
 

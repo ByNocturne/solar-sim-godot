@@ -30,8 +30,22 @@ public partial class TimeControls : CanvasLayer
         "N: mostra ou esconde os nomes",
         "Home: devolve a vista inicial",
         "Roda: zoom     Botão direito: arrasta",
+        "P / Shift+P: solta uma sonda em órbita ou em fuga",
+        "Delete: descarta a sonda ancorada",
+        "F5 / F9: salva e carrega",
         "H: mostra ou esconde esta ajuda",
     ];
+
+    /// <summary>
+    /// Fração da velocidade de escape com que cada sonda parte. A primeira fica em órbita
+    /// fechada; a segunda sai da esfera de influência e é entregue ao corpo de cima.
+    /// </summary>
+    private const double OrbitFactor = 0.7;
+
+    private const double EscapeFactor = 1.15;
+
+    /// <summary>Por quanto tempo o aviso da última ação fica na tela, em segundos.</summary>
+    private const double NoticeSeconds = 4.0;
 
     private SimBridge? _bridge;
 
@@ -42,6 +56,11 @@ public partial class TimeControls : CanvasLayer
     private Button _pause = null!;
     private LineEdit _dateEntry = null!;
     private PanelContainer _help = null!;
+    private Label _notice = null!;
+
+    // Conta o tempo restante do aviso. É estado da tela, e não da simulação: nada aqui
+    // seria consultável no motor.
+    private double _noticeSeconds;
 
     public void Attach(SimBridge bridge) => _bridge = bridge;
 
@@ -74,6 +93,16 @@ public partial class TimeControls : CanvasLayer
 
         _view.Text = $"Escala {scale}     Âncora: {_bridge.AnchorName}"
             + $"     {Godot.Engine.GetFramesPerSecond()} fps     H: ajuda";
+
+        if (_noticeSeconds > 0.0)
+        {
+            _noticeSeconds -= delta;
+
+            if (_noticeSeconds <= 0.0)
+            {
+                _notice.Text = string.Empty;
+            }
+        }
     }
 
     public override void _UnhandledInput(InputEvent @event)
@@ -105,6 +134,22 @@ public partial class TimeControls : CanvasLayer
                 _help.Visible = !_help.Visible;
                 break;
 
+            case Key.P:
+                Launch(key.ShiftPressed ? EscapeFactor : OrbitFactor);
+                break;
+
+            case Key.Delete:
+                DiscardProbe();
+                break;
+
+            case Key.F5:
+                Save();
+                break;
+
+            case Key.F9:
+                Load();
+                break;
+
             default:
                 return;
         }
@@ -123,6 +168,7 @@ public partial class TimeControls : CanvasLayer
 
         rows.AddChild(BuildStatusRow());
         rows.AddChild(BuildCommandRow());
+        rows.AddChild(BuildMissionRow());
     }
 
     private HBoxContainer BuildStatusRow()
@@ -189,10 +235,94 @@ public partial class TimeControls : CanvasLayer
         return row;
     }
 
+    private HBoxContainer BuildMissionRow()
+    {
+        var row = new HBoxContainer();
+
+        row.AddChild(Panels.Caption("Sonda"));
+        row.AddChild(Panels.Command("Em órbita", () => Launch(OrbitFactor)));
+        row.AddChild(Panels.Command("Em fuga", () => Launch(EscapeFactor)));
+        row.AddChild(Panels.Command("Descartar", DiscardProbe));
+
+        row.AddChild(new VSeparator());
+        row.AddChild(Panels.Command("Salvar", Save));
+        row.AddChild(Panels.Command("Carregar", Load));
+
+        _notice = Panels.Value(string.Empty);
+        _notice.HorizontalAlignment = HorizontalAlignment.Right;
+        _notice.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        row.AddChild(_notice);
+
+        return row;
+    }
+
+    /// <summary>
+    /// Solta uma sonda a partir do corpo ancorado. A órbita não é escolhida: ela sai do
+    /// vetor de estado com que a sonda parte, e é por isso que a mesma tecla dá uma
+    /// elipse ou uma hipérbole conforme a velocidade.
+    /// </summary>
+    private void Launch(double escapeFactor)
+    {
+        if (_bridge is null)
+        {
+            return;
+        }
+
+        if (_bridge.LaunchProbe(escapeFactor) is null)
+        {
+            Notify("Ancore em um corpo com massa para soltar uma sonda.");
+            return;
+        }
+
+        Notify($"{_bridge.AnchorName} em rota a partir de "
+            + $"{_bridge.ReportFor(_bridge.AnchorBodyId!).ParentName}.");
+    }
+
+    private void DiscardProbe()
+    {
+        if (_bridge is null)
+        {
+            return;
+        }
+
+        Notify(_bridge.RemoveAnchoredBody()
+            ? "Sonda descartada."
+            : "Só é possível descartar uma sonda, e é preciso estar ancorado nela.");
+    }
+
+    private void Save()
+    {
+        if (_bridge is null)
+        {
+            return;
+        }
+
+        _bridge.Save();
+        Notify($"Gravado: {_bridge.DynamicBodyCount} sonda(s) e a data.");
+    }
+
+    private void Load()
+    {
+        if (_bridge is null)
+        {
+            return;
+        }
+
+        Notify(_bridge.Load()
+            ? $"Carregado: {_bridge.DynamicBodyCount} sonda(s) e a data."
+            : "Não há nada gravado para carregar.");
+    }
+
+    private void Notify(string message)
+    {
+        _notice.Text = message;
+        _noticeSeconds = NoticeSeconds;
+    }
+
     private void BuildHelp()
     {
         _help = Panels.Box();
-        Panels.AnchorCenter(_help, 400.0f, 252.0f);
+        Panels.AnchorCenter(_help, 400.0f, 306.0f);
         _help.Visible = false;
         AddChild(_help);
 

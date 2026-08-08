@@ -8,34 +8,46 @@ namespace SolarSim.Engine;
 /// Fachada do motor: junta o relógio, os dados e o propagador, e publica o estado
 /// resultante. Nada aqui conhece a camada gráfica.
 /// </summary>
+/// <remarks>
+/// Os corpos vêm de duas origens. Os do repositório são fixos: chegam na construção,
+/// nunca trocam de pai e a órbita deles é a que o arquivo declara. Os dinâmicos entram e
+/// saem em tempo de execução, carregam uma <see cref="Trajectory"/> em vez de uma órbita
+/// só, e são os únicos que a emenda de cônicas reatribui.
+/// </remarks>
 public sealed class SimEngine
 {
-    private readonly BodyHierarchy _hierarchy;
+    private readonly List<CelestialBodyData> _bodies;
 
-    // Parâmetro gravitacional efetivo de cada órbita, indexado como a hierarquia.
-    private readonly double[] _mu;
+    // Um corpo dinâmico é exatamente um corpo com trajetória: o dicionário é ao mesmo
+    // tempo o registro do que foi acrescentado em runtime e o histórico de arcos de cada
+    // um.
+    private readonly Dictionary<string, Trajectory> _trajectories =
+        new(StringComparer.Ordinal);
+
+    private BodyHierarchy _hierarchy;
+
+    // Parâmetro gravitacional efetivo da órbita vigente de cada corpo, indexado como a
+    // hierarquia.
+    private double[] _mu;
 
     // Reaproveitados a cada quadro: o caminho de propagação roda a 60 Hz e não deve
     // gerar lixo para o coletor.
-    private readonly StateVector[] _globals;
-    private readonly BodyState[] _states;
+    private StateVector[] _globals;
+    private BodyState[] _states;
 
     public SimEngine(IBodyRepository repository, TimeEngine? time = null)
     {
         ArgumentNullException.ThrowIfNull(repository);
 
         Time = time ?? new TimeEngine();
-        _hierarchy = BodyHierarchy.Create(repository.LoadBodies());
+        _bodies = [.. repository.LoadBodies()];
 
+        _hierarchy = BodyHierarchy.Create(_bodies);
         _mu = new double[_hierarchy.Count];
-        for (var index = 0; index < _hierarchy.Count; index++)
-        {
-            _mu[index] = EffectiveMu(index);
-        }
-
         _globals = new StateVector[_hierarchy.Count];
         _states = new BodyState[_hierarchy.Count];
 
+        Rebuild();
         Publish();
     }
 
@@ -56,11 +68,20 @@ public sealed class SimEngine
 
     public bool Contains(string bodyId) => _hierarchy.Contains(bodyId);
 
+    /// <summary>Publicado a cada avanço de tempo.</summary>
     public event Action<SystemStateSnapshot>? SystemUpdated;
+
+    /// <summary>
+    /// Publicado quando a lista de corpos muda, ou quando um corpo dinâmico troca de
+    /// pai. É o aviso de que quem espelha a árvore precisa remontá-la; o evento de
+    /// quadro sozinho não diria isso.
+    /// </summary>
+    public event Action? StructureChanged;
 
     public void Advance(double realSecondsElapsed)
     {
         Time.Advance(realSecondsElapsed);
+        UpdateAttractors();
         Publish();
     }
 
@@ -85,15 +106,199 @@ public sealed class SimEngine
     public StateVector LocalStateAt(string bodyId, double julianDate)
         => LocalStateOf(_hierarchy.IndexOf(bodyId), julianDate - AstroConstants.J2000);
 
-    /// <summary>Elementos orbitais de um corpo, ou nulo se ele for a raiz.</summary>
+    /// <summary>Elementos da órbita vigente de um corpo, ou nulo se ele for a raiz.</summary>
     public OrbitalElements? ElementsOf(string bodyId) => _hierarchy.Get(bodyId).Elements;
 
     /// <summary>
-    /// Parâmetro gravitacional que rege a órbita deste corpo, em km³/s². Vale zero para
-    /// a raiz.
+    /// Parâmetro gravitacional que rege a órbita vigente deste corpo, em km³/s². Vale
+    /// zero para a raiz.
     /// </summary>
     public double GravitationalParameterOf(string bodyId)
         => _mu[_hierarchy.IndexOf(bodyId)];
+
+    /// <summary>
+    /// Raio da esfera de influência de um corpo, em km. Vale zero para quem não tem
+    /// massa e infinito para a raiz, que domina tudo o que não estiver dentro da esfera
+    /// de outro.
+    /// </summary>
+    public double SphereOfInfluenceKm(string bodyId)
+        => SphereOfInfluenceOf(_hierarchy.IndexOf(bodyId));
+
+    /// <summary>Identificadores dos corpos acrescentados em runtime.</summary>
+    public IReadOnlyCollection<string> DynamicBodyIds => _trajectories.Keys;
+
+    public bool IsDynamic(string bodyId) => _trajectories.ContainsKey(bodyId);
+
+    /// <summary>
+    /// Os arcos que compõem a trajetória de um corpo dinâmico, em ordem cronológica.
+    /// </summary>
+    /// <exception cref="KeyNotFoundException">Se o corpo não for dinâmico.</exception>
+    public IReadOnlyList<TrajectoryArc> TrajectoryOf(string bodyId)
+        => _trajectories.TryGetValue(bodyId, out var trajectory)
+            ? trajectory.Arcs
+            : throw new KeyNotFoundException(
+                $"O corpo '{bodyId}' não foi acrescentado em runtime e não tem trajetória "
+                    + "em arcos: a órbita dele é a que o arquivo de dados declara.");
+
+    /// <summary>
+    /// Acrescenta um corpo cuja órbita já vem em elementos, a partir do instante
+    /// corrente do relógio.
+    /// </summary>
+    public void Add(CelestialBodyData body)
+    {
+        ArgumentNullException.ThrowIfNull(body);
+
+        if (body.ParentId is not { } parentId || body.Elements is not { } elements)
+        {
+            throw new SystemDataException(
+                $"Corpo '{body.Id}': acrescentar em runtime exige 'parent' e órbita. Um "
+                    + "segundo corpo sem pai seria uma segunda raiz.");
+        }
+
+        Register(body, new Trajectory(new TrajectoryArc(Time.JulianDate, parentId, elements)));
+    }
+
+    /// <summary>
+    /// Acrescenta um corpo com a trajetória inteira, arcos anteriores inclusive. É por
+    /// aqui que um jogo salvo volta: o histórico de emendas não pode ser redescoberto,
+    /// porque depende de por onde o corpo passou.
+    /// </summary>
+    public void Add(CelestialBodyData body, Trajectory trajectory)
+    {
+        ArgumentNullException.ThrowIfNull(body);
+        ArgumentNullException.ThrowIfNull(trajectory);
+
+        Register(
+            body with
+            {
+                ParentId = trajectory.Current.ParentId,
+                Elements = trajectory.Current.Elements,
+            },
+            trajectory);
+    }
+
+    /// <summary>
+    /// Acrescenta um corpo a partir de onde ele está e para onde vai. É o caminho de uma
+    /// nave: a órbita não é escolhida, e sim consequência do vetor de estado.
+    /// </summary>
+    /// <param name="body">
+    /// Identidade e dados físicos. O campo de órbita é ignorado; quem manda é o estado.
+    /// </param>
+    /// <param name="localState">Posição e velocidade relativas ao pai declarado.</param>
+    /// <param name="julianDate">Instante a que o estado se refere.</param>
+    public void AddFromState(
+        CelestialBodyData body,
+        in StateVector localState,
+        double julianDate)
+    {
+        ArgumentNullException.ThrowIfNull(body);
+
+        if (body.ParentId is not { } parentId)
+        {
+            throw new SystemDataException(
+                $"Corpo '{body.Id}': acrescentar em runtime exige 'parent'.");
+        }
+
+        if (!Contains(parentId))
+        {
+            throw new SystemDataException(
+                $"Corpo '{body.Id}': o pai '{parentId}' não existe no sistema.");
+        }
+
+        var elements = OrbitDetermination.ElementsFrom(
+            localState,
+            EffectiveMu(parentId, body.MuKm3S2),
+            julianDate - AstroConstants.J2000);
+
+        Register(
+            body with { Elements = elements },
+            new Trajectory(new TrajectoryArc(julianDate, parentId, elements)));
+    }
+
+    /// <summary>
+    /// Remove um corpo. Recusa a raiz e quem tem filhos, porque as duas coisas deixariam
+    /// o sistema sem hierarquia válida.
+    /// </summary>
+    /// <returns>Falso se o corpo não existia.</returns>
+    public bool Remove(string bodyId)
+    {
+        if (!Contains(bodyId))
+        {
+            return false;
+        }
+
+        if (_hierarchy.Root.Id == bodyId)
+        {
+            throw new SystemDataException(
+                $"Corpo '{bodyId}': é a raiz do sistema, e removê-la deixaria todo o resto "
+                    + "sem origem.");
+        }
+
+        var filhos = _bodies
+            .Where(body => body.ParentId == bodyId)
+            .Select(body => body.Id)
+            .ToArray();
+
+        if (filhos.Length > 0)
+        {
+            throw new SystemDataException(
+                $"Corpo '{bodyId}': ainda tem {string.Join(", ", filhos)} orbitando. "
+                    + "Remova os filhos primeiro.");
+        }
+
+        _bodies.RemoveAll(body => body.Id == bodyId);
+        _trajectories.Remove(bodyId);
+
+        Rebuild();
+        StructureChanged?.Invoke();
+        Publish();
+
+        return true;
+    }
+
+    private void Register(CelestialBodyData body, Trajectory trajectory)
+    {
+        var anterior = _bodies.ToList();
+
+        _bodies.Add(body);
+
+        try
+        {
+            // A validação de identificador duplicado, pai inexistente e ciclo é a mesma
+            // da carga do arquivo, e vale a pena ser: um corpo criado em runtime não
+            // merece verificação mais frouxa do que um vindo do JSON.
+            Rebuild();
+        }
+        catch
+        {
+            _bodies.Clear();
+            _bodies.AddRange(anterior);
+            Rebuild();
+            throw;
+        }
+
+        _trajectories[body.Id] = trajectory;
+
+        StructureChanged?.Invoke();
+        Publish();
+    }
+
+    private void Rebuild()
+    {
+        _hierarchy = BodyHierarchy.Create(_bodies);
+
+        if (_mu.Length != _hierarchy.Count)
+        {
+            _mu = new double[_hierarchy.Count];
+            _globals = new StateVector[_hierarchy.Count];
+            _states = new BodyState[_hierarchy.Count];
+        }
+
+        for (var index = 0; index < _hierarchy.Count; index++)
+        {
+            _mu[index] = EffectiveMu(index);
+        }
+    }
 
     /// <summary>
     /// A equação do movimento relativo de dois corpos usa a soma dos dois parâmetros
@@ -105,6 +310,9 @@ public sealed class SimEngine
         => _hierarchy.ParentOf(index) is { } parent
             ? parent.MuKm3S2 + _hierarchy[index].MuKm3S2
             : 0.0;
+
+    private double EffectiveMu(string parentId, double bodyMuKm3S2)
+        => _hierarchy.Get(parentId).MuKm3S2 + bodyMuKm3S2;
 
     /// <summary>
     /// Uma passada só, na ordem de avaliação: quando um corpo é processado, o estado
@@ -121,10 +329,20 @@ public sealed class SimEngine
 
         for (var index = 0; index < _hierarchy.Count; index++)
         {
-            var parentIndex = _hierarchy.ParentIndices[index];
+            var parentIndex = ParentIndexOf(index, daysSinceEpoch);
             var local = LocalStateOf(index, daysSinceEpoch);
 
-            _globals[index] = parentIndex < 0 ? local : _globals[parentIndex] + local;
+            _globals[index] = parentIndex switch
+            {
+                < 0 => local,
+
+                // O caminho normal: o pai vem antes na ordem de avaliação e já está
+                // pronto. A exceção é o corpo dinâmico consultado numa data em que ele
+                // tinha outro pai, que pode estar depois dele na ordem de hoje.
+                _ when parentIndex < index => _globals[parentIndex] + local,
+
+                _ => GlobalStateOf(parentIndex, daysSinceEpoch) + local,
+            };
 
             _states[index] = new BodyState(
                 _hierarchy[index].Id, _globals[index].PositionKm, local.PositionKm);
@@ -140,7 +358,7 @@ public sealed class SimEngine
     private StateVector GlobalStateOf(int index, double daysSinceEpoch)
     {
         var local = LocalStateOf(index, daysSinceEpoch);
-        var parentIndex = _hierarchy.ParentIndices[index];
+        var parentIndex = ParentIndexOf(index, daysSinceEpoch);
 
         return parentIndex < 0
             ? local
@@ -148,7 +366,188 @@ public sealed class SimEngine
     }
 
     private StateVector LocalStateOf(int index, double daysSinceEpoch)
-        => _hierarchy[index].Elements is { } elements
+    {
+        var body = _hierarchy[index];
+
+        if (_trajectories.TryGetValue(body.Id, out var trajectory))
+        {
+            var arc = trajectory.At(AstroConstants.J2000 + daysSinceEpoch);
+
+            return KeplerPropagator.StateAt(
+                arc.Elements,
+                EffectiveMu(arc.ParentId, body.MuKm3S2),
+                daysSinceEpoch);
+        }
+
+        return body.Elements is { } elements
             ? KeplerPropagator.StateAt(elements, _mu[index], daysSinceEpoch)
             : default;
+    }
+
+    /// <summary>
+    /// Quem atraía o corpo naquele instante. Para um corpo do arquivo é sempre o mesmo;
+    /// para um dinâmico é o pai do arco vigente, que pode não ser o de hoje.
+    /// </summary>
+    private int ParentIndexOf(int index, double daysSinceEpoch)
+    {
+        if (_trajectories.TryGetValue(_hierarchy[index].Id, out var trajectory))
+        {
+            return _hierarchy.IndexOf(
+                trajectory.At(AstroConstants.J2000 + daysSinceEpoch).ParentId);
+        }
+
+        return _hierarchy.ParentIndices[index];
+    }
+
+    private double SphereOfInfluenceOf(int index)
+    {
+        var parentIndex = _hierarchy.ParentIndices[index];
+
+        if (parentIndex < 0)
+        {
+            return double.PositiveInfinity;
+        }
+
+        var body = _hierarchy[index];
+
+        return body.Elements is { } elements
+            ? SphereOfInfluence.RadiusKm(
+                elements.SemiMajorAxisKm,
+                body.MuKm3S2,
+                _hierarchy[parentIndex].MuKm3S2)
+            : 0.0;
+    }
+
+    /// <summary>
+    /// Revê, para cada corpo dinâmico, quem o atrai — e emenda um arco novo quando a
+    /// resposta muda.
+    /// </summary>
+    private void UpdateAttractors()
+    {
+        if (_trajectories.Count == 0)
+        {
+            return;
+        }
+
+        var julianDate = Time.JulianDate;
+        var trocou = false;
+
+        foreach (var bodyId in _trajectories.Keys.ToArray())
+        {
+            var trajectory = _trajectories[bodyId];
+            var vigente = trajectory.Current;
+
+            // Com o tempo andando para trás, a emenda que ainda não aconteceu deixa de
+            // existir; será redescoberta se o tempo voltar a passar por aqui.
+            trajectory.RewindTo(julianDate);
+
+            if (trajectory.Current != vigente)
+            {
+                Adopt(bodyId, trajectory.Current);
+                trocou = true;
+            }
+
+            var atual = trajectory.Current.ParentId;
+            var dominante = DominantAttractor(
+                _hierarchy.IndexOf(bodyId), atual, julianDate);
+
+            if (dominante != atual)
+            {
+                Reparent(bodyId, dominante, julianDate);
+                trocou = true;
+            }
+        }
+
+        if (trocou)
+        {
+            StructureChanged?.Invoke();
+        }
+    }
+
+    /// <summary>
+    /// Qual corpo domina a atração sobre este, agora: o pai de sempre, o avô — se o
+    /// corpo saiu da esfera de influência do pai — ou um irmão em cuja esfera ele
+    /// entrou.
+    /// </summary>
+    private string DominantAttractor(int index, string currentParentId, double julianDate)
+    {
+        var parentIndex = _hierarchy.IndexOf(currentParentId);
+        var position = GlobalStateOf(index, julianDate - AstroConstants.J2000).PositionKm;
+
+        var parentPosition = GlobalStateOf(parentIndex, julianDate - AstroConstants.J2000)
+            .PositionKm;
+
+        if ((position - parentPosition).Magnitude > SphereOfInfluenceOf(parentIndex)
+            && _hierarchy.ParentOf(parentIndex) is { } grandparent)
+        {
+            return grandparent.Id;
+        }
+
+        for (var candidate = 0; candidate < _hierarchy.Count; candidate++)
+        {
+            if (candidate == index || _hierarchy.ParentIndices[candidate] != parentIndex)
+            {
+                continue;
+            }
+
+            var radius = SphereOfInfluenceOf(candidate);
+
+            if (radius <= 0.0)
+            {
+                continue;
+            }
+
+            var candidatePosition =
+                GlobalStateOf(candidate, julianDate - AstroConstants.J2000).PositionKm;
+
+            if ((position - candidatePosition).Magnitude < radius)
+            {
+                return _hierarchy[candidate].Id;
+            }
+        }
+
+        return currentParentId;
+    }
+
+    /// <summary>
+    /// A emenda propriamente dita: o estado relativo ao novo pai, medido no instante da
+    /// troca, vira os elementos do arco seguinte. Por sair do mesmo vetor de estado, a
+    /// posição e a velocidade no referencial global não dão nenhum salto — o que muda é
+    /// só quem passa a ser considerado responsável pela curva.
+    /// </summary>
+    private void Reparent(string bodyId, string newParentId, double julianDate)
+    {
+        var index = _hierarchy.IndexOf(bodyId);
+        var body = _hierarchy[index];
+        var daysSinceEpoch = julianDate - AstroConstants.J2000;
+
+        var relative = GlobalStateOf(index, daysSinceEpoch)
+            - GlobalStateOf(_hierarchy.IndexOf(newParentId), daysSinceEpoch);
+
+        var elements = OrbitDetermination.ElementsFrom(
+            relative, EffectiveMu(newParentId, body.MuKm3S2), daysSinceEpoch);
+
+        var arc = new TrajectoryArc(julianDate, newParentId, elements);
+
+        _trajectories[bodyId].Append(arc);
+        Adopt(bodyId, arc);
+    }
+
+    /// <summary>
+    /// Faz a árvore refletir o arco vigente de um corpo dinâmico. A descrição estática
+    /// dele guarda sempre a órbita de agora, para que quem consulta o motor — o inspetor,
+    /// a árvore do sistema, o desenho da órbita — não precise saber que existem arcos.
+    /// </summary>
+    private void Adopt(string bodyId, TrajectoryArc arc)
+    {
+        var position = _bodies.FindIndex(candidate => candidate.Id == bodyId);
+
+        _bodies[position] = _bodies[position] with
+        {
+            ParentId = arc.ParentId,
+            Elements = arc.Elements,
+        };
+
+        Rebuild();
+    }
 }
