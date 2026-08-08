@@ -5,19 +5,30 @@ como base para trabalho futuro com missões e transferências orbitais.
 
 ## Estado atual
 
-Pré-build. A estrutura de arquivos existe, mas os arquivos de código ainda estão vazios e
-o ambiente não tem .NET SDK instalado. O trabalho começa pelo marco M0 do
-[ROADMAP.md](ROADMAP.md).
+Marco M0 concluído: o esqueleto compila, o projeto abre no Godot e os testes rodam. Os
+arquivos de código de domínio ainda estão vazios. O próximo passo é o M1, a fatia
+vertical, descrita no [ROADMAP.md](ROADMAP.md).
 
 ## Como construir
 
 ```bash
-dotnet build          # compila motor e testes
-dotnet test           # roda os testes; não exige Godot instalado
+dotnet build          # compila motor, projeto Godot e testes
+dotnet test           # roda os testes; não exige o Godot aberto
 ```
 
-Requer .NET SDK 8.0 ou superior (recomendado: o mais recente) e o Godot 4.x na variante
-**.NET**, que é diferente do build padrão.
+Verificado com .NET SDK 10.0.302 e Godot 4.7.1 (variante .NET). O mínimo é o SDK 8.0.
+
+## Estrutura de projetos
+
+Três projetos na solução:
+
+- `Engine/SolarSim.Engine.csproj` — biblioteca de domínio, sem referência ao GodotSharp
+- `solar-sim-godot.csproj` — projeto do Godot; exclui `Engine/**` e `Tests/**` dos globs
+  e depende do motor por `ProjectReference`
+- `Tests/SolarSim.Tests.csproj` — xUnit, referencia apenas o motor
+
+Essa separação é o que faz o invariante 1 ser garantido pelo compilador: `using Godot` em
+`Engine/` não compila, porque o assembly não está lá.
 
 ## Onde ficam as coisas
 

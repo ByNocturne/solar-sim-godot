@@ -102,9 +102,12 @@ igual a um.
 
 ## Estado do ambiente
 
-Verificado nesta máquina: **não há .NET SDK instalado**. Existe apenas o runtime .NET Core
-3.1 em `C:\Program Files\dotnet\shared\Microsoft.NETCore.App\3.1.32`, e o Godot não está
-no PATH. Nada compila hoje — daí o M0 começar por instalação.
+Instalado e verificado: **.NET SDK 10.0.302** e **Godot 4.7.1 (variante .NET)**. A solução
+compila sem avisos e os testes rodam com o editor fechado.
+
+Os projetos alvejam `net8.0` (motor e projeto Godot) e `net10.0` (testes). O Godot 4.7
+exige no mínimo .NET 8, e a recomendação oficial é manter o SDK mais recente instalado
+independentemente do alvo.
 
 ---
 
@@ -112,22 +115,35 @@ no PATH. Nada compila hoje — daí o M0 começar por instalação.
 
 Objetivo: sair do zero absoluto para um projeto que compila, abre no Godot e roda testes.
 
-- [ ] Instalar o .NET SDK estável mais recente. Godot 4.4+ exige SDK 8.0 ou superior, e a
-      recomendação oficial é sempre instalar o SDK mais novo, independentemente do
-      `TargetFramework` do projeto. Baixar em <https://dotnet.microsoft.com/download>
-      (versão 64 bits, para casar com o Godot 64 bits)
-- [ ] Instalar o **Godot 4.x .NET** — a variante com C#, não o build padrão. Conferir na
-      página de download qual é a estável atual e qual SDK ela exige
-- [ ] Verificar com `dotnet --info` e abrir o Godot uma vez
-- [ ] `solar-sim-godot.csproj`: `Godot.NET.Sdk`, `TargetFramework` compatível,
-      `EnableDynamicLoading`, `Nullable` habilitado, `LangVersion` recente
-- [ ] `project.godot` — sem ele o Godot não reconhece o diretório como projeto
-- [ ] Criar `Bridge/` e o projeto de testes em `Tests/`, referenciando **apenas** `Engine/`
+- [x] .NET SDK 10.0.302 instalado e verificado com `dotnet --info`
+- [x] Godot 4.7.1 na variante .NET (o pacote se chama `GodotEngine.GodotEngine.Mono`;
+      o nome "Mono" é histórico e não indica o runtime antigo)
+- [x] `solar-sim-godot.csproj` com `Godot.NET.Sdk/4.7.1`, `EnableDynamicLoading` e
+      `Nullable`, excluindo `Engine/**` e `Tests/**` dos globs de compilação
+- [x] `project.godot` com `config_version=5` e cena principal apontando para `Main.tscn`
+- [x] Cenas mínimas válidas em `Scenes/`, sem as quais o projeto não abre
+- [x] `Engine/SolarSim.Engine.csproj` como biblioteca separada
+- [x] `Tests/SolarSim.Tests.csproj` (xUnit) referenciando apenas `Engine/`
+- [x] `solar-sim-godot.sln` no formato clássico, agregando os três projetos
+- [x] Teste-guardião do invariante 1 em `Tests/ArchitectureTests.cs`
+- [x] `.gdignore` em `Engine/` e `Tests/`, para o Godot não tratá-los como pastas de script
 - [x] Regras do projeto em `.cursor/rules/`, `AGENTS.md`, `.gitignore`, `.gitattributes`,
       `.editorconfig` e `README.md`
 
-**Pronto quando:** `dotnet build` passa, o Godot abre o projeto sem erro, e um teste
-trivial roda com o editor fechado.
+### Decisão: o motor é um projeto separado
+
+Em vez de deixar `Engine/` dentro do projeto do Godot e confiar em disciplina, ele virou
+uma biblioteca própria que não referencia o `GodotSharp`. O projeto do Godot e os testes
+dependem dela por `ProjectReference`.
+
+Com isso, o invariante 1 deixa de ser convenção e passa a ser garantido pelo compilador:
+escrever `using Godot` em `Engine/` simplesmente não compila. O teste-guardião continua
+existindo para pegar o caso em que alguém adiciona a referência ao `.csproj` do motor.
+
+**Pronto quando:** ~~`dotnet build` passa, o Godot abre o projeto sem erro, e um teste
+trivial roda com o editor fechado.~~ **Concluído:** build sem avisos, dois testes
+passando, e `--headless --import` seguido de execução da cena principal com código de
+saída 0.
 
 ---
 
@@ -294,7 +310,9 @@ solar-sim-godot/
 │   └── rules/                       # convenções por camada, com exemplos
 ├── Data/
 │   └── solar_system_j2000.json
-├── Engine/                          # DOMÍNIO PURO (zero Godot)
+├── Engine/                          # DOMÍNIO PURO (projeto próprio, zero Godot)
+│   ├── SolarSim.Engine.csproj
+│   ├── .gdignore
 │   ├── Core/
 │   │   ├── AstroConstants.cs        # novo — constantes e unidades
 │   │   ├── TimeEngine.cs
@@ -324,8 +342,12 @@ solar-sim-godot/
 │   ├── Main.tscn
 │   └── Prefabs/
 │       └── CelestialBody.tscn
-├── Tests/                           # novo — referencia apenas Engine/
-├── project.godot                    # novo — obrigatório
+├── Tests/                           # referencia apenas Engine/
+│   ├── SolarSim.Tests.csproj
+│   ├── ArchitectureTests.cs         # guardião do invariante 1
+│   └── .gdignore
+├── project.godot
+├── solar-sim-godot.sln
 ├── .editorconfig
 ├── .gitattributes
 ├── .gitignore

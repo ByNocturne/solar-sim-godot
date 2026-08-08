@@ -1,0 +1,22 @@
+<Project Sdk="Godot.NET.Sdk/4.7.1">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <RootNamespace>SolarSim</RootNamespace>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+
+  <!-- O Godot.NET.Sdk inclui **/*.cs por padrao; o motor e os testes sao
+       projetos proprios e nao devem ser compilados aqui tambem. -->
+  <ItemGroup>
+    <Compile Remove="Engine/**/*.cs" />
+    <Compile Remove="Tests/**/*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="Engine/SolarSim.Engine.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -10,9 +10,10 @@ estado como tipo de primeira classe e suporte planejado a órbitas abertas.
 
 ## Estado
 
-**Pré-build.** A estrutura de pastas e a documentação de engenharia estão prontas; os
-arquivos de código ainda estão vazios. O plano de execução está em
-[ROADMAP.md](ROADMAP.md), dividido em oito marcos.
+**Marco M0 concluído.** O esqueleto compila sem avisos, o projeto abre no Godot e os
+testes rodam com o editor fechado. Os arquivos de domínio ainda estão vazios; o próximo
+passo é o M1, a fatia vertical que coloca a Terra em órbita na tela. O plano completo está
+em [ROADMAP.md](ROADMAP.md), dividido em oito marcos.
 
 ## Setup
 
@@ -26,6 +27,8 @@ arquivos de código ainda estão vazios. O plano de execução está em
 dotnet build
 dotnet test     # os testes do motor rodam sem o Godot
 ```
+
+Verificado com .NET SDK 10.0.302 e Godot 4.7.1.
 
 ## Arquitetura
 

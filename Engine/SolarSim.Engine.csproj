@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Biblioteca de dominio puro. Nao referencia GodotSharp de proposito:
+       isso faz o invariante 1 (nada de Godot no motor) ser garantido pelo
+       compilador em vez de por disciplina. -->
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>SolarSim.Engine</RootNamespace>
+    <AssemblyName>SolarSim.Engine</AssemblyName>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+  </PropertyGroup>
+
+</Project>
