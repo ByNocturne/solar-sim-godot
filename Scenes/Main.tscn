@@ -2,5 +2,5 @@
 
 [ext_resource type="Script" uid="uid://c66mita68sqwy" path="res://Bridge/SimBridge.cs" id="1_simbridge"]
 
-[node name="Main" type="Node2D"]
+[node name="Main" type="Node3D"]
 script = ExtResource("1_simbridge")

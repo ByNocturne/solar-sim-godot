@@ -5,19 +5,20 @@ como base para trabalho futuro com missões e transferências orbitais.
 
 ## Estado atual
 
-Marcos M0 a M5 concluídos e verificados em execução. O motor carrega
+Marcos M0 a M6 concluídos e verificados em execução. O motor carrega
 o Sistema Solar de `Data/solar_system_j2000.json` — Sol, oito planetas, a Lua, as
 galileanas e Titã — compõe a posição de cada corpo a partir da do pai e produz posição e
 velocidade, com erro radial abaixo de 0,02% contra as efemérides DE441 do JPL. A
-apresentação tem escala hierárquica com modo logarítmico e linear, câmera ancorável e
-desenho de órbitas, com árvore do sistema, barra de tempo e inspetor de corpo. O próximo
-passo é o M6, a decisão entre 2D e 3D, descrito no [ROADMAP.md](ROADMAP.md).
+apresentação é tridimensional com projeção ortográfica, escala hierárquica com modo
+logarítmico e linear, câmera ancorável e orbitável e desenho de órbitas, com árvore do
+sistema, barra de tempo e inspetor de corpo. O próximo passo é o M7, as fundações para
+missões, descrito no [ROADMAP.md](ROADMAP.md).
 
 Para ver rodando: abra o projeto no Godot e pressione F5, ou `godot --path .`. Espaço pausa, setas ajustam a velocidade, R volta
 para J2000, Tab e Shift+Tab ancoram a câmera no corpo seguinte e no anterior, um clique
 ancora no corpo apontado, L alterna entre escala logarítmica e linear, N mostra ou esconde
-os nomes, Home devolve a vista inicial, H mostra a lista de atalhos, a roda dá zoom e o
-botão direito arrasta.
+os nomes, Home devolve a vista inicial, H mostra a lista de atalhos, a roda dá zoom, o
+botão direito gira a câmera e o do meio — ou Shift com o direito — arrasta.
 
 ## Como construir
 
@@ -36,8 +37,12 @@ Para conferir a tela sem depender de alguém olhando, o modo Movie Maker grava a
 uma sequência de PNG, no tamanho declarado em `project.godot`:
 
 ```bash
+dotnet build   # o Godot roda o assembly ja compilado, e nao recompila sozinho
 godot --path . --write-movie frames/f.png --fixed-fps 60 --quit-after 70
 ```
+
+O `dotnet build` antes não é opcional: sem ele o Godot grava a versão anterior do código e
+o quadro parece provar que a mudança não teve efeito.
 
 É assim que se verifica posição de painel e corte de rótulo. `--headless --quit-after`
 prova apenas que nada estourou; não mostra onde as coisas ficaram.
@@ -60,7 +65,7 @@ Essa separação é o que faz o invariante 1 ser garantido pelo compilador: `usi
 | --- | --- |
 | `Engine/` | Domínio puro: matemática orbital, tempo, estado. Zero Godot |
 | `Bridge/` | Adaptação: precisão, escala, ponte de eventos com o Godot |
-| `Render/` | Nós visuais. Andaime 2D descartável até o marco M6 |
+| `Render/` | Nós visuais em 3D com projeção ortográfica |
 | `UI/` | Painéis e controles |
 | `Data/` | Dados estáticos do Sistema Solar na época J2000 |
 | `Tests/` | Testes do motor; referencia apenas `Engine/` |

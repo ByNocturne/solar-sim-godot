@@ -184,9 +184,11 @@ adiar a discussão de schema do JSON até o M3 sem criar dívida: quando o
 - **Conversão JD para UTC entrou antecipada.** O plano deixava a inversa para depois, mas
   sem ela não há como mostrar a data na tela, e a data é justamente como se confere que a
   Terra completou uma volta.
-- **A árvore de nós é montada em código, não em `.tscn`.** `Scenes/Prefabs/CelestialBody.tscn`
-  ficou sem uso. Como a decisão entre 2D e 3D só acontece no M6, construir os nós em código
-  evita refazer arquivos de cena. `Main.tscn` tem um nó só, com o `SimBridge`.
+- **A árvore de nós é montada em código, não em `.tscn`.** Como a decisão entre 2D e 3D só
+  aconteceria no M6, construir os nós em código evitava refazer arquivos de cena.
+  `Main.tscn` tem um nó só, com o `SimBridge`. A aposta se pagou: a migração para 3D no M6
+  não teve nenhuma cena para reconstruir, e o stub `Scenes/Prefabs/CelestialBody.tscn`, que
+  nunca chegou a ser usado, foi removido lá.
 - **`ImplicitUsings` precisou ser ligado** no projeto do Godot; o `Godot.NET.Sdk` não o
   habilita por padrão, ao contrário dos outros dois projetos.
 
@@ -453,27 +455,64 @@ alcançável a partir de `UI/`.
 
 ---
 
-## M6 — Ponto de decisão 2D/3D
+## M6 — Ponto de decisão 2D/3D — **Concluído**
 
-Marco de reavaliação explícito, não de implementação. Até aqui, `Render/` é um andaime 2D
+Marco de reavaliação explícito, não de implementação. Até aqui, `Render/` era um andaime 2D
 declaradamente descartável.
 
-O custo de migrar para 3D está limitado a quatro arquivos:
+- [x] Decidir entre manter 2D ou migrar para Node3D, agora com o sistema real em mãos
+- [x] Se migrar: câmera orbital em três eixos, profundidade
+- [x] ~~iluminação~~ — recusada; a justificativa está abaixo
 
-- `Render/CelestialBodyNode.cs`
-- `Render/SpaceCamera.cs`
-- `Render/OrbitLineRenderer.cs`
-- os arquivos `.tscn`
+### A decisão: migrar, com câmera ortográfica
 
-`Engine/` e `Bridge/` não mudam, porque ambos sempre trabalharam com `Vector3D` completo:
-o andaime 2D apenas ignora a componente Z. É por isso que a decisão pode esperar até aqui
-sem custo de retrabalho no que importa.
+**O custo previsto estava subestimado, mas na camada certa.** O plano dizia quatro arquivos
+e afirmava que `Bridge/` não mudaria. A segunda parte estava errada: o colapso de três
+dimensões para duas nunca esteve em `Render/`, e sim na própria ponte — `RenderFrame`
+publicava `Vector2`, o `ViewportTransformer` descartava o Z na conversão e o
+`OrbitSampleToPixels` fazia o mesmo. A conta real foi de seis arquivos, somando `BodyLabels`
+e os dois da Bridge. O que se confirmou, e é o que importava, é que `Engine/` não mudou uma
+linha: a física estava mesmo protegida, e o preço ficou todo na adaptação.
 
-- [ ] Decidir entre manter 2D ou migrar para Node3D, agora com o sistema real em mãos
-- [ ] Se migrar: câmera orbital em três eixos, iluminação, profundidade
-- [ ] Se manter: aproveitar o orçamento em qualidade visual 2D
+**A informação descartada é real, mas modesta.** Medida em pixels de excursão fora do plano
+da eclíptica, na escala em que o sistema cabe na tela: Netuno 15,4, Saturno 14,9, Mercúrio
+6,2 e a Lua 5,1. Como fração do raio orbital desenhado, Mercúrio lidera com 11% e a Lua vem
+com 9%; as galileanas são praticamente coplanares. Ou seja, vista de cima, a tela em 3D é
+quase indistinguível da de antes — o ganho só aparece ao inclinar a câmera.
 
-**Pronto quando:** a decisão está tomada e registrada neste documento com a justificativa.
+**A projeção é ortográfica, e essa é a escolha que destravou a decisão.** A objeção séria ao
+3D seria a perspectiva brigar com a escala hierárquica: ela encolhe o que está longe da
+câmera, mas a curva logarítmica já mentiu sobre a distância de cada corpo, e as duas
+distorções somadas fariam o tamanho na tela deixar de significar qualquer coisa. Sem
+perspectiva o conflito não existe. Com elevação de 90 graus a imagem é a mesma que o andaime
+2D produzia — verificado por diferença de quadros: 0,7% dos pixels mudam, todos sobre o
+traço das órbitas, e o mapa de diferenças mostra uma curva só, e não duas paralelas, o que
+prova que a geometria não se moveu. O que resta é arredondamento de rasterização.
+
+**Sem iluminação, contra o que o plano previa.** A vista é um esquema: as distâncias estão
+comprimidas por uma curva logarítmica e os raios têm escala própria, sem relação com a das
+distâncias. Iluminar a partir do Sol sugeriria um realismo que a escala não tem, e deixaria
+metade de cada corpo — que ocupa entre três e quinze pixels — no escuro, sem nada em troca.
+Os materiais são sem sombreamento, e por isso a esfera na tela é o mesmo disco de cor cheia
+de antes.
+
+**O que pesou a favor foi o M7.** Mudança de plano, transferências e esfera de influência
+são fenômenos tridimensionais; um plane change é justamente o que não há como mostrar em
+duas dimensões. Somado a custo limitado, momento mais barato possível e regressão visual
+nula, a migração passou a não ter contra.
+
+### Consequências
+
+`SimBridge` virou `Node3D` e publica `Vector3`. A convenção de eixos mora em um lugar só,
+no `ViewportTransformer`: a eclíptica tem X e Y no plano e Z para o norte, o Godot tem Y
+para cima, e o mapeamento entre os dois é uma rotação. A seleção por clique passou a
+comparar em pixels de tela, o que de quebra deu tolerância de clique constante em qualquer
+zoom. O arrasto virou dois gestos, porque agora existe o que girar: o botão direito orbita,
+e o do meio — ou Shift com o direito — desloca.
+
+**Pronto quando:** ~~a decisão está tomada e registrada neste documento com a
+justificativa.~~ **Concluído:** decisão registrada acima, migração feita, build sem avisos,
+134 testes passando e equivalência visual com o 2D verificada por diferença de quadros.
 
 ---
 
@@ -539,20 +578,18 @@ solar-sim-godot/
 │   ├── BodyReport.cs                # retrato de um corpo, consultado ao motor (M5)
 │   ├── DisplayFormat.cs             # número em texto, com escolha de unidade (M5)
 │   └── BodyPalette.cs               # 0xRRGGBB para Color, em um lugar só
-├── Render/                          # andaime 2D até o M6
-│   ├── CelestialBodyNode.cs
-│   ├── OrbitLineRenderer.cs
-│   ├── BodyLabels.cs
-│   └── SpaceCamera.cs
+├── Render/                          # 3D com projeção ortográfica (M6)
+│   ├── CelestialBodyNode.cs         # esfera sem sombreamento
+│   ├── OrbitLineRenderer.cs         # malha de linha reconstruída na troca de escala
+│   ├── BodyLabels.cs                # rótulos em camada de tela, projetados pela câmera
+│   └── SpaceCamera.cs               # ortográfica, orbital em azimute e elevação
 ├── UI/
 │   ├── Panels.cs                    # caixa, rótulos e botões comuns
 │   ├── InspectorPanel.cs
 │   ├── TimeControls.cs
 │   └── SystemTree.cs
 ├── Scenes/
-│   ├── Main.tscn
-│   └── Prefabs/
-│       └── CelestialBody.tscn
+│   └── Main.tscn                    # um nó só, com o SimBridge; o resto é código
 ├── Tests/                           # referencia apenas Engine/
 │   ├── SolarSim.Tests.csproj
 │   ├── ArchitectureTests.cs         # guardião do invariante 1

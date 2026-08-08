@@ -8,21 +8,23 @@ using SolarSim.UI;
 
 namespace SolarSim.Bridge;
 
-/// <summary>Posições já convertidas para a tela, prontas para consumo pelos nós.</summary>
+/// <summary>
+/// Posições já convertidas para o espaço do renderizador, prontas para consumo pelos nós.
+/// </summary>
 /// <param name="ScaleRevision">
 /// Muda quando a escala muda. Quem mantém geometria em cache — o desenho das órbitas —
 /// compara este número em vez de recalcular para descobrir se o cache venceu.
 /// </param>
 public readonly record struct RenderFrame(
     double JulianDate,
-    IReadOnlyDictionary<string, Vector2> ScreenPositions,
+    IReadOnlyDictionary<string, Vector3> RenderPositions,
     int ScaleRevision);
 
 /// <summary>
 /// Único nó do Godot que conhece o motor. Avança o tempo, projeta o snapshot em pixels,
 /// posiciona a câmera e publica um quadro para quem estiver escutando.
 /// </summary>
-public partial class SimBridge : Node2D
+public partial class SimBridge : Node3D
 {
     /// <summary>Limites do multiplicador de tempo, em módulo.</summary>
     private const double MinSpeedMultiplier = 1.0;
@@ -31,7 +33,7 @@ public partial class SimBridge : Node2D
 
     private const int OrbitSamples = 240;
 
-    private readonly Dictionary<string, Vector2> _screenPositions = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, Vector3> _renderPositions = new(StringComparer.Ordinal);
     private readonly Dictionary<string, string?> _parents = new(StringComparer.Ordinal);
     private readonly CameraRig _rig = new();
 
@@ -45,7 +47,7 @@ public partial class SimBridge : Node2D
 
     public event Action<RenderFrame>? FrameReady;
 
-    // Não se chama Scale porque Node2D já tem uma propriedade com esse nome.
+    // Não se chama Scale porque Node3D já tem uma propriedade com esse nome.
     public ScaleMapper ScaleMap => _projector.Mapper;
 
     /// <summary>Corpos em ordem de avaliação: o pai sempre antes do filho.</summary>
@@ -106,11 +108,11 @@ public partial class SimBridge : Node2D
     }
 
     /// <summary>
-    /// Deslocamento manual da câmera. Recebe pixels de tela e desconta o zoom, para que
-    /// arrastar mova sempre a mesma distância sob o cursor.
+    /// Deslocamento manual da câmera, em unidades do espaço projetado. Quem arrasta é a
+    /// câmera, e é ela quem sabe converter pixels de tela nos seus próprios eixos — que
+    /// mudam a cada rotação.
     /// </summary>
-    public void PanByScreenPixels(Vector2 deltaScreen, float zoom)
-        => _rig.Pan(new Vector3D(-deltaScreen.X / zoom, deltaScreen.Y / zoom, 0.0));
+    public void PanBy(Vector3D deltaPixels) => _rig.Pan(deltaPixels);
 
     /// <summary>Ancora a câmera em um corpo, ou na origem do sistema se nulo.</summary>
     public void AnchorTo(string? bodyId) => _rig.AnchorTo(bodyId);
@@ -171,17 +173,23 @@ public partial class SimBridge : Node2D
         => BodyReport.For(_sim, bodyId, _sim.Time.JulianDate);
 
     /// <summary>
-    /// Corpo mais próximo de um ponto do mundo, dentro do raio informado. Devolve nulo se
-    /// o clique caiu no vazio, para que clicar no fundo não desancore por acidente.
+    /// Corpo cuja projeção na tela cai mais perto do ponto apontado, dentro do raio
+    /// informado. Devolve nulo se o clique caiu no vazio, para que clicar no fundo não
+    /// desancore por acidente.
     /// </summary>
-    public string? NearestBody(Vector2 worldPosition, float maxDistancePixels)
+    /// <param name="project">
+    /// Leva um ponto do espaço projetado ao pixel de tela correspondente. Quem sabe fazer
+    /// isso é a câmera; a comparação em si continua aqui, junto das posições.
+    /// </param>
+    public string? NearestBody(
+        Vector2 screenPoint, float maxDistancePixels, Func<Vector3, Vector2> project)
     {
         string? closest = null;
         var closestDistance = maxDistancePixels;
 
-        foreach (var (id, position) in _screenPositions)
+        foreach (var (id, position) in _renderPositions)
         {
-            var distance = position.DistanceTo(worldPosition);
+            var distance = project(position).DistanceTo(screenPoint);
 
             if (distance <= closestDistance)
             {
@@ -219,12 +227,9 @@ public partial class SimBridge : Node2D
     }
 
     /// <summary>Converte uma amostra local em km para o deslocamento em pixels.</summary>
-    public Vector2 OrbitSampleToPixels(Vector3D localKm, string parentId)
-    {
-        var scaled = ScaleMap.ToPixels(localKm, _projector.Layout.LevelOf(parentId));
-
-        return new Vector2((float)scaled.X, (float)-scaled.Y);
-    }
+    public Vector3 OrbitSampleToPixels(Vector3D localKm, string parentId)
+        => ViewportTransformer.EclipticToGodot(
+            ScaleMap.ToPixels(localKm, _projector.Layout.LevelOf(parentId)));
 
     /// <summary>
     /// Ler o arquivo é responsabilidade da Bridge porque, no jogo exportado, os dados
@@ -325,10 +330,12 @@ public partial class SimBridge : Node2D
         for (var index = 0; index < snapshot.Bodies.Count; index++)
         {
             var state = snapshot.Bodies[index];
-            _screenPositions[state.Id] = _transformer.ToScreen(_projector.PositionOf(state.Id));
+
+            _renderPositions[state.Id] =
+                _transformer.ToRenderSpace(_projector.PositionOf(state.Id));
         }
 
         FrameReady?.Invoke(
-            new RenderFrame(snapshot.JulianDate, _screenPositions, ScaleMap.Revision));
+            new RenderFrame(snapshot.JulianDate, _renderPositions, ScaleMap.Revision));
     }
 }

@@ -10,20 +10,22 @@ estado como tipo de primeira classe e suporte planejado a órbitas abertas.
 
 ## Estado
 
-**Marcos M0 a M5 concluídos.** O simulador carrega
+**Marcos M0 a M6 concluídos.** O simulador carrega
 o Sistema Solar de um arquivo JSON — Sol, oito planetas, a Lua, as galileanas e Titã —
 propaga cada corpo em torno do seu e desenha as órbitas, com a câmera ancorável em
 qualquer corpo. O motor está validado contra as efemérides DE441 do JPL Horizons: erro
 máximo de 0,0132% na distância radial ao longo de 26 anos simulados. A interface tem
 árvore do sistema, barra de tempo com salto para uma data arbitrária e inspetor com os
-elementos orbitais do corpo ancorado. O próximo passo é o M6, a decisão entre 2D e 3D. O
-plano está em [ROADMAP.md](ROADMAP.md), dividido em oito marcos.
+elementos orbitais do corpo ancorado. A apresentação é tridimensional, com projeção
+ortográfica: girar a câmera revela a inclinação das órbitas, que existe nos dados desde o
+começo. O próximo passo é o M7, as fundações para missões. O plano está em
+[ROADMAP.md](ROADMAP.md), dividido em oito marcos.
 
 Controles: espaço pausa, setas ajustam a velocidade do tempo, R volta para J2000, Tab e
 Shift+Tab ancoram a câmera no corpo seguinte e no anterior, um clique ancora no corpo
 apontado, L alterna entre escala logarítmica e linear, N mostra ou esconde os nomes, Home
-devolve a vista inicial, H mostra a lista de atalhos, a roda dá zoom e o botão direito
-arrasta.
+devolve a vista inicial, H mostra a lista de atalhos, a roda dá zoom, o botão direito gira
+a câmera e o do meio — ou Shift com o direito — arrasta.
 
 ## Setup
 

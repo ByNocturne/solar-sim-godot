@@ -13,10 +13,11 @@ namespace SolarSim.Render;
 /// pontos. O cache só vence quando a escala muda, e é a mudança de escala que a
 /// <see cref="RenderFrame.ScaleRevision"/> denuncia.
 /// </remarks>
-public partial class OrbitLineRenderer : Node2D
+public partial class OrbitLineRenderer : MeshInstance3D
 {
+    private readonly ImmediateMesh _line = new();
+
     private Vector3D[] _samplesKm = [];
-    private Vector2[] _points = [];
     private int _cachedRevision = -1;
     private SimBridge? _bridge;
 
@@ -25,6 +26,18 @@ public partial class OrbitLineRenderer : Node2D
     public string ParentBodyId { get; set; } = string.Empty;
 
     public Color LineColor { get; set; } = Colors.White;
+
+    public override void _Ready()
+    {
+        Mesh = _line;
+
+        MaterialOverride = new StandardMaterial3D
+        {
+            AlbedoColor = LineColor,
+            ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+            Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+        };
+    }
 
     public void Attach(SimBridge bridge)
     {
@@ -42,20 +55,9 @@ public partial class OrbitLineRenderer : Node2D
         }
     }
 
-    public override void _Draw()
-    {
-        if (_points.Length > 1)
-        {
-            // Largura negativa desenha a linha fina de um pixel, que não engorda quando a
-            // câmera aproxima. Com zoom de 64 vezes, uma linha de largura 1 viraria uma
-            // faixa cobrindo o planeta.
-            DrawPolyline(_points, LineColor, width: -1.0f);
-        }
-    }
-
     private void OnFrameReady(RenderFrame frame)
     {
-        if (frame.ScreenPositions.TryGetValue(ParentBodyId, out var parentPosition))
+        if (frame.RenderPositions.TryGetValue(ParentBodyId, out var parentPosition))
         {
             Position = parentPosition;
         }
@@ -66,20 +68,34 @@ public partial class OrbitLineRenderer : Node2D
         }
 
         _cachedRevision = frame.ScaleRevision;
-        _points = new Vector2[_samplesKm.Length + 1];
+        Rebuild(_bridge);
+    }
 
-        for (var index = 0; index < _samplesKm.Length; index++)
+    /// <summary>
+    /// A linha tem sempre um pixel de espessura, porque é isso que a primitiva de linha
+    /// entrega. É a largura desejada: com o zoom no máximo, um traço de espessura
+    /// proporcional viraria uma faixa cobrindo o planeta.
+    /// </summary>
+    private void Rebuild(SimBridge bridge)
+    {
+        _line.ClearSurfaces();
+
+        if (_samplesKm.Length < 2)
         {
-            _points[index] = _bridge.OrbitSampleToPixels(_samplesKm[index], ParentBodyId);
+            return;
+        }
+
+        _line.SurfaceBegin(Mesh.PrimitiveType.LineStrip);
+
+        foreach (var sampleKm in _samplesKm)
+        {
+            _line.SurfaceAddVertex(bridge.OrbitSampleToPixels(sampleKm, ParentBodyId));
         }
 
         // Fecha o traço no primeiro ponto: a amostragem cobre um período, e sem isso
         // sobra uma fresta na órbita.
-        if (_samplesKm.Length > 0)
-        {
-            _points[^1] = _points[0];
-        }
+        _line.SurfaceAddVertex(bridge.OrbitSampleToPixels(_samplesKm[0], ParentBodyId));
 
-        QueueRedraw();
+        _line.SurfaceEnd();
     }
 }

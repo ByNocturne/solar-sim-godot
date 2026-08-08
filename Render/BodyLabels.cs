@@ -86,9 +86,18 @@ public partial class BodyLabels : CanvasLayer
 
     private void OnFrameReady(RenderFrame frame)
     {
-        var canvas = GetViewport().GetCanvasTransform();
-        var zoom = canvas.Scale.X;
-        var screen = FreeArea(GetViewport().GetVisibleRect());
+        if (GetViewport().GetCamera3D() is not { } camera)
+        {
+            return;
+        }
+
+        var viewport = GetViewport().GetVisibleRect();
+        var screen = FreeArea(viewport);
+
+        // Em projeção ortográfica, quantos pixels de tela vale uma unidade do mundo é
+        // constante em todo o quadro — não depende da distância. É o que permite calcular
+        // o raio aparente do corpo sem projetar a borda dele.
+        var pixelsPerUnit = viewport.Size.Y / camera.Size;
 
         // Quem já foi desenhado reserva o seu espaço. A ordem de avaliação coloca o pai
         // antes do filho, então em um aglomerado o planeta ganha do satélite — que é a
@@ -99,14 +108,14 @@ public partial class BodyLabels : CanvasLayer
         {
             entry.Label.Visible = false;
 
-            if (!_visible || !frame.ScreenPositions.TryGetValue(entry.BodyId, out var world))
+            if (!_visible || !frame.RenderPositions.TryGetValue(entry.BodyId, out var world))
             {
                 continue;
             }
 
             var size = entry.Label.GetMinimumSize();
-            var position = (canvas * world)
-                + new Vector2((entry.RadiusPixels * zoom) + Margin, -size.Y / 2.0f);
+            var position = camera.UnprojectPosition(world)
+                + new Vector2((entry.RadiusPixels * pixelsPerUnit) + Margin, -size.Y / 2.0f);
 
             var box = new Rect2(position, size);
 

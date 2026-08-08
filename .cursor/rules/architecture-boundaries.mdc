@@ -67,7 +67,19 @@ private double _distanciaKm;   // desatualiza no instante em que o tempo anda
 _valor.Text = DisplayFormat.Distance(simBridge.ReportFor(id).DistanceToRootKm);
 ```
 
-## Render/ é descartável até o M6
+## Render/ é 3D ortográfico, e a convenção de eixos mora na Bridge
 
-A escolha entre 2D e 3D só acontece no marco M6 (ver ROADMAP.md). Até lá, `Render/` é
-andaime provisório: não invista em polimento visual e não deixe regra de negócio ali.
+O M6 decidiu pela apresentação em 3D com projeção ortográfica — sem perspectiva, porque ela
+brigaria com a escala logarítmica (ver ROADMAP.md). `Render/` deixou de ser andaime, mas
+continua sem regra de negócio.
+
+A eclíptica tem X e Y no plano e Z para o norte; o Godot tem Y para cima. A tradução entre
+as duas convenções existe em um lugar só, e é lá que ela deve continuar:
+
+```csharp
+// BAD - Render/CelestialBodyNode.cs
+Position = new Vector3((float)p.X, (float)p.Z, (float)-p.Y);
+
+// GOOD - Bridge/ViewportTransformer.cs
+public static Vector3 EclipticToGodot(Vector3D ecliptic) => ...
+```
