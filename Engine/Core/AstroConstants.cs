@@ -22,6 +22,9 @@ public static class AstroConstants
     /// <summary>GM da Terra.</summary>
     public const double EarthMuKm3S2 = 3.986_004_418e5;
 
+    /// <summary>GM de Marte.</summary>
+    public const double MarsMuKm3S2 = 4.282_837e4;
+
     public static double DegreesToRadians(double degrees) => degrees * Math.PI / 180.0;
 
     public static double RadiansToDegrees(double radians) => radians * 180.0 / Math.PI;

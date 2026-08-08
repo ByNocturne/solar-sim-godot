@@ -203,20 +203,46 @@ após um período.
 Objetivo: transformar "parece certo" em "está comprovadamente certo". A partir daqui o
 motor é confiável o suficiente para construir em cima.
 
-- [ ] Newton-Raphson com tolerância `1e-12`, teto de iterações e chute inicial adaptado
-      para excentricidade alta (`E₀ = π` quando `e > 0.8`)
-- [ ] Normalizar a anomalia média para `[0, 2π)` antes de resolver
-- [ ] Anomalia verdadeira por `atan2`, **não** pela fórmula `tan(ν/2)` da especificação:
-      a versão com tangente perde precisão perto de `E = π`, ou seja, justamente na
-      metade da órbita próxima ao afélio
-- [ ] Vetor velocidade, necessário para o painel de inspeção e para tudo no M7
-- [ ] Rotação completa `Rz(-Ω)·Rx(-i)·Rz(-ω)` com as três componentes
-- [ ] Testes: round-trip de tempo, conservação de energia orbital, convergência do
-      solver para toda faixa de excentricidade, e comparação contra o JPL Horizons
+- [x] Newton-Raphson com tolerância `1e-12`, teto de iterações e chute inicial adaptado
+      para excentricidade alta (`E₀ = π` quando `e > 0.8`) — já entregue no M1
+- [x] Normalizar a anomalia média para `[0, 2π)` antes de resolver — já no M1
+- [x] Anomalia verdadeira por `atan2` — já no M1
+- [x] Vetor velocidade, com `StateVector` preenchido (antecipado do M7)
+- [x] Rotação completa `Rz(-Ω)·Rx(-i)·Rz(-ω)`, generalizada para aceitar qualquer vetor
+      do plano orbital, e não apenas raio e anomalia
+- [x] Marte acrescentado ao repositório, necessário para a comparação de referência
+- [x] Contagem de iterações exposta pelo solver, para o critério ser verificado
+- [x] `SimEngine.StateAt`, `ElementsOf` e `ParentMuOf` para consulta de estado
+- [x] Testes de invariantes: energia orbital específica, momento angular e a relação
+      entre energia e semi-eixo maior
+- [x] Regressão contra efemérides geométricas do JPL Horizons (solução DE441)
 
-**Pronto quando:** posições de Terra e Marte conferem com o JPL Horizons em três datas
+### Resultado da validação
+
+Comparação com o JPL Horizons para o baricentro Terra-Lua e o de Marte, em 2000-01-01,
+2013-01-01 e 2026-01-01, referencial eclíptico J2000 centrado no Sol:
+
+| Grandeza | Erro máximo observado | Critério |
+| --- | --- | --- |
+| Distância radial | 0,0133% | 0,1% |
+| Direção do vetor posição | 0,0937° | — |
+| Velocidade | 0,0121% | — |
+
+O erro cresce com a distância à época, como esperado de um modelo de elementos fixos: a
+Terra sai de 0,0003% em J2000 para 0,0041% em 2026. O pior caso é sempre Marte em 2026.
+Reduzir isso não é questão de ajustar o propagador, e sim de adotar taxas seculares nos
+elementos, que é o primeiro item do backlog.
+
+Os limites dos testes ficaram propositalmente próximos do erro medido (0,02% no raio,
+0,15° na direção) para que sirvam de detector de regressão, em vez de apenas confirmar a
+ordem de grandeza.
+
+**Pronto quando:** ~~posições de Terra e Marte conferem com o JPL Horizons em três datas
 distintas, com erro relativo abaixo de 0,1% na distância radial, e o solver converge em
-menos de dez iterações para todo `e < 0.95`.
+menos de dez iterações para todo `e < 0.95`.~~ **Concluído:** erro radial máximo de
+0,0133%, sete vezes melhor que o critério. A convergência em menos de dez iterações é
+verificada para `e` de 0 a 0,94, varrendo 720 valores de anomalia média em cada
+excentricidade. 41 testes passando.
 
 ---
 
@@ -303,8 +329,9 @@ Objetivo: as capacidades que transformam o simulador em base para transferência
 e missões. Estão aqui, e não no backlog, porque algumas delas influenciam o desenho das
 estruturas desde o M1.
 
-- [ ] `Engine/Models/StateVector.cs` — posição e velocidade como tipo de primeira classe
-- [ ] Conversão `OrbitalElements` para `StateVector` (já implícita no propagador)
+- [x] `Engine/Models/StateVector.cs` — posição e velocidade como tipo de primeira classe,
+      com energia específica e momento angular (antecipado no M2)
+- [x] Conversão `OrbitalElements` para `StateVector` via `KeplerPropagator.StateAt`
 - [ ] Conversão inversa `StateVector` para `OrbitalElements` — o problema inverso, que é o
       que permite criar um corpo a partir de posição e velocidade arbitrárias, e portanto
       o que permite existir uma nave

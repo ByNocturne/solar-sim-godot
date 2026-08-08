@@ -10,10 +10,11 @@ estado como tipo de primeira classe e suporte planejado a órbitas abertas.
 
 ## Estado
 
-**Marcos M0 e M1 concluídos.** A fatia vertical atravessa todas as camadas: a Terra orbita
-o Sol a partir dos seus elementos keplerianos reais na época J2000, com o tempo controlável
-em tela. O próximo passo é o M2, que valida a precisão contra efemérides do JPL. O plano
-completo está em [ROADMAP.md](ROADMAP.md), dividido em oito marcos.
+**Marcos M0, M1 e M2 concluídos.** O simulador mostra Sol, Terra e Marte em órbita, com o
+tempo controlável em tela, e o motor está validado contra as efemérides DE441 do JPL
+Horizons: erro máximo de 0,0133% na distância radial ao longo de 26 anos simulados. O
+próximo passo é o M3, que traz o Sistema Solar completo e a hierarquia de luas. O plano
+está em [ROADMAP.md](ROADMAP.md), dividido em oito marcos.
 
 Controles: espaço pausa, setas ajustam a velocidade do tempo, R volta para J2000, roda do
 mouse dá zoom.

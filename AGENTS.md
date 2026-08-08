@@ -5,9 +5,10 @@ como base para trabalho futuro com missões e transferências orbitais.
 
 ## Estado atual
 
-Marcos M0 e M1 concluídos: a fatia vertical funciona de ponta a ponta, com a Terra
-orbitando o Sol a partir dos elementos keplerianos reais de J2000. O próximo passo é o M2,
-rigor numérico, descrito no [ROADMAP.md](ROADMAP.md).
+Marcos M0, M1 e M2 concluídos. O motor propaga Sol, Terra e Marte com erro radial abaixo
+de 0,02% contra as efemérides DE441 do JPL, e produz posição e velocidade. O próximo passo
+é o M3, que traz o sistema completo por JSON e a hierarquia de luas, descrito no
+[ROADMAP.md](ROADMAP.md).
 
 Para ver rodando: abra o projeto no Godot e pressione F5, ou
 `godot --path . --resolution 1152x648`. Espaço pausa, setas ajustam a velocidade, R volta

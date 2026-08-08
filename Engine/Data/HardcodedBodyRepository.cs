@@ -4,7 +4,7 @@ using SolarSim.Engine.Models;
 namespace SolarSim.Engine.Data;
 
 /// <summary>
-/// Sol e Terra em código, para a fatia vertical do M1. Substituído pela leitura de
+/// Sol, Terra e Marte em código. Substituído pela leitura de
 /// <c>Data/solar_system_j2000.json</c> no M3.
 /// </summary>
 /// <remarks>
@@ -42,6 +42,22 @@ public sealed class HardcodedBodyRepository : IBodyRepository
                 argumentOfPeriapsisDeg: 102.93768193,
                 meanAnomalyAtEpochDeg: -2.47311027),
             ColorRgb = 0x4A_90D9,
+        },
+        new CelestialBodyData
+        {
+            Id = "mars",
+            Name = "Marte",
+            ParentId = "sun",
+            MuKm3S2 = AstroConstants.MarsMuKm3S2,
+            RadiusKm = 3_389.5,
+            Elements = OrbitalElements.FromAuAndDegrees(
+                semiMajorAxisAu: 1.52371034,
+                eccentricity: 0.09339410,
+                inclinationDeg: 1.84969142,
+                longitudeOfAscendingNodeDeg: 49.55953891,
+                argumentOfPeriapsisDeg: -73.50316850,
+                meanAnomalyAtEpochDeg: 19.39019754),
+            ColorRgb = 0xC1_440E,
         },
     ];
 }

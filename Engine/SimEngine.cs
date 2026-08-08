@@ -46,13 +46,36 @@ public sealed class SimEngine
     /// permite desenhar órbitas e consultar datas futuras.
     /// </summary>
     public Vector3D PositionAt(string bodyId, double julianDate)
+        => StateAt(bodyId, julianDate).PositionKm;
+
+    /// <summary>Posição e velocidade de um corpo em um instante arbitrário.</summary>
+    public StateVector StateAt(string bodyId, double julianDate)
     {
         if (!_byId.TryGetValue(bodyId, out var body))
         {
             throw new KeyNotFoundException($"Corpo desconhecido: '{bodyId}'.");
         }
 
-        return PositionOf(body, julianDate - AstroConstants.J2000);
+        return StateOf(body, julianDate - AstroConstants.J2000);
+    }
+
+    /// <summary>Elementos orbitais de um corpo, ou nulo se ele for a raiz.</summary>
+    public OrbitalElements? ElementsOf(string bodyId)
+        => _byId.TryGetValue(bodyId, out var body)
+            ? body.Elements
+            : throw new KeyNotFoundException($"Corpo desconhecido: '{bodyId}'.");
+
+    /// <summary>GM do corpo pai, usado para propagar a órbita do filho.</summary>
+    public double ParentMuOf(string bodyId)
+    {
+        if (!_byId.TryGetValue(bodyId, out var body))
+        {
+            throw new KeyNotFoundException($"Corpo desconhecido: '{bodyId}'.");
+        }
+
+        return body.ParentId is not null && _byId.TryGetValue(body.ParentId, out var parent)
+            ? parent.MuKm3S2
+            : 0.0;
     }
 
     private void Publish()
@@ -67,7 +90,7 @@ public sealed class SimEngine
         for (var index = 0; index < _bodies.Count; index++)
         {
             var body = _bodies[index];
-            _states[index] = new BodyState(body.Id, PositionOf(body, daysSinceEpoch));
+            _states[index] = new BodyState(body.Id, StateOf(body, daysSinceEpoch).PositionKm);
         }
 
         SystemUpdated.Invoke(new SystemStateSnapshot(Time.JulianDate, _states));
@@ -77,11 +100,11 @@ public sealed class SimEngine
     /// No M1 a lista é plana: a raiz fica na origem e todo o resto orbita diretamente
     /// em torno dela. A composição hierárquica recursiva entra no M3.
     /// </summary>
-    private Vector3D PositionOf(CelestialBodyData body, double daysSinceEpoch)
+    private StateVector StateOf(CelestialBodyData body, double daysSinceEpoch)
     {
         if (body.Elements is not { } elements || body.ParentId is null)
         {
-            return Vector3D.Zero;
+            return default;
         }
 
         var parentMu = _byId.TryGetValue(body.ParentId, out var parent)
@@ -89,6 +112,6 @@ public sealed class SimEngine
             : throw new KeyNotFoundException(
                 $"Corpo '{body.Id}' referencia o pai inexistente '{body.ParentId}'.");
 
-        return KeplerPropagator.PositionAt(elements, parentMu, daysSinceEpoch);
+        return KeplerPropagator.StateAt(elements, parentMu, daysSinceEpoch);
     }
 }
