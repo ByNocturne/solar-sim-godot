@@ -41,3 +41,33 @@ até a causa.
 O projeto é base para transferências orbitais, onde `e >= 1` é rotina, não exceção. Ao
 escrever qualquer coisa no propagador, não assuma órbita fechada de forma irreversível.
 Divisões por `(1 - e)` e cálculos de período são os pontos que quebram primeiro.
+
+## Taxas seculares: forma fechada, nunca acumulada
+
+Um elemento que anda com o tempo é avaliado na data, e não somado quadro a quadro. Somar
+é perder o invariante 4 e, com ele, o tempo reverso, o salto de data e o save de um
+`double`.
+
+```csharp
+// BAD
+_argumentOfPeriapsis += rate * delta;
+
+// GOOD
+SecularPropagator.ElementsAt(epochElements, rates, mu, daysSinceEpoch)
+```
+
+## Semi-eixo andando: a anomalia média vira integral
+
+Com `a` variando, o movimento médio deixa de ser constante e `M0 + n*t` erra a fase com
+erro que cresce sem limite. O que vale é a integral de `n` no trecho, e ela tem forma
+fechada para `a` linear no tempo.
+
+O fator dessa integral, `2*(1 - (1+x)^-0.5)/x`, subtrai dois números quase iguais quando
+`x` é pequeno — que é justamente o caso de uma taxa secular real. Abaixo de `|x| = 1e-4` o
+motor usa a série `1 - 0.75x + 0.625x²`.
+
+## Perturbação calculada não se declara também no arquivo
+
+Relatividade e `J2` saem de `SecularPerturbations`, a partir da órbita e do corpo pai.
+`orbit.rates` no JSON é só para o que o motor não modela. Declarar os dois é contar o
+mesmo efeito duas vezes, e o erro só apareceria como uma precessão dobrada séculos adiante.

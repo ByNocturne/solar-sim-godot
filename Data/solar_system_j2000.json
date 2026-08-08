@@ -6,21 +6,26 @@
     "julianDate": 2451545.0
   },
   "units": {
-    "convention": "O sufixo do nome do campo declara a unidade: Km, Au, Deg, Km3S2.",
+    "convention": "O sufixo do nome do campo declara a unidade: Km, Au, Deg, Km3S2, PerCentury.",
     "distance": "quilômetros; semiMajorAxisAu aceita unidades astronômicas na entrada",
     "angles": "graus, convertidos para radianos na carga",
     "gravitationalParameter": "km^3/s^2, a mesma unidade em que o JPL publica GM",
-    "meanAnomaly": "referida a epoch.julianDate"
+    "meanAnomaly": "referida a epoch.julianDate",
+    "secularRates": "por século juliano de 36525 dias; ângulos em graus por século",
+    "oblateness": "j2 é adimensional e se refere a equatorialRadiusKm"
   },
   "sources": [
     "Planetas: JPL, Keplerian Elements for Approximate Positions of the Major Planets, tabela 1800-2050.",
     "GM: JPL DE440.",
     "Lua: elementos médios de J2000 conforme Meeus, Astronomical Algorithms, capítulo 47.",
-    "Galileanas: longitudes médias de Meeus, capítulo 44, avaliadas em J2000."
+    "Galileanas: longitudes médias de Meeus, capítulo 44, avaliadas em J2000.",
+    "J2: Terra EGM96; Júpiter Juno (Iess et al. 2018); Saturno Jacobson et al. 2006; Sol heliossismologia (Mecheri et al. 2004)."
   ],
   "notes": [
     "Os elementos dos planetas descrevem o baricentro do sistema planetário, não o centro do planeta. Para a Terra a diferença chega a 4700 km, três ordens de grandeza abaixo da distância ao Sol.",
-    "Elementos fixos, sem taxas seculares: a precisão se degrada conforme a data se afasta de J2000. As taxas estão no backlog.",
+    "Os elementos são os de J2000. O que os faz andar é o campo 'orbit.rates', para o que o motor não modela, mais a precessão que ele calcula sozinho: relatividade geral e achatamento do corpo pai. Declarar em 'rates' um efeito que o motor já calcula é contá-lo duas vezes.",
+    "'j2' só é declarado para corpos que têm satélites no arquivo, porque o achatamento afeta quem orbita o corpo e não ele mesmo. Um planeta sem lua aqui não ganharia nada com o campo.",
+    "A precessão do perigeu lunar, de 8,85 anos, é causada pelo Sol e não está modelada: pelo achatamento da Terra sozinho a Lua precessaria meio grau por século. Perturbação secular de terceiro corpo está no backlog.",
     "Para satélites, o plano de referência real é o equador do planeta. Como a obliquidade ainda não é modelada, as órbitas usam a eclíptica como plano de referência; isso afeta a orientação do plano orbital, não a distância ao corpo pai."
   ],
   "bodies": [
@@ -30,6 +35,8 @@
       "parent": null,
       "muKm3S2": 1.32712440018e11,
       "radiusKm": 695700.0,
+      "j2": 2.2e-7,
+      "equatorialRadiusKm": 695700.0,
       "colorRgb": "#FFD966"
     },
     {
@@ -70,6 +77,8 @@
       "parent": "sun",
       "muKm3S2": 3.986004418e5,
       "radiusKm": 6371.0,
+      "j2": 1.08262668e-3,
+      "equatorialRadiusKm": 6378.137,
       "colorRgb": "#4A90D9",
       "orbit": {
         "semiMajorAxisAu": 1.00000261,
@@ -119,6 +128,8 @@
       "parent": "sun",
       "muKm3S2": 1.266865319e8,
       "radiusKm": 69911.0,
+      "j2": 1.4696e-2,
+      "equatorialRadiusKm": 71492.0,
       "colorRgb": "#D8A47F",
       "orbit": {
         "semiMajorAxisAu": 5.202887,
@@ -200,6 +211,8 @@
       "parent": "sun",
       "muKm3S2": 3.79311879e7,
       "radiusKm": 58232.0,
+      "j2": 1.629071e-2,
+      "equatorialRadiusKm": 60330.0,
       "colorRgb": "#E3C97F",
       "orbit": {
         "semiMajorAxisAu": 9.53667594,

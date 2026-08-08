@@ -67,6 +67,49 @@ public static class DisplayFormat
     public static string GravitationalParameter(double muKm3S2)
         => Format(muKm3S2, "N0", " km³/s²");
 
+    /// <summary>
+    /// Abaixo disso a precessão se lê melhor como o tempo de uma volta inteira. O corte
+    /// fica em dez mil anos porque é onde as duas leituras trocam de lado: a de Io leva
+    /// quatro anos e sai como volta, a da Lua leva oitenta mil e sai em ″/século.
+    /// </summary>
+    private const double TurnAsDurationThresholdDays = 10_000.0 * DaysPerJulianYear;
+
+    /// <summary>
+    /// Taxa de precessão em segundos de arco por século, que é a unidade em que a
+    /// literatura publica o número — e a única em que 43 é um valor legível: em graus por
+    /// segundo, a precessão de Mercúrio seria 0,0000000000000038.
+    /// </summary>
+    /// <remarks>
+    /// Só que a unidade da literatura pressupõe a precessão lenta de um planeta. O
+    /// periápside de Io, empurrado pelo J₂ de Júpiter, dá uma volta a cada quatro anos:
+    /// em ″/século isso são trinta milhões, um número que não se lê. Quando a volta cabe
+    /// numa vida humana, o tempo dela é a leitura honesta.
+    /// </remarks>
+    public static string PrecessionRate(double radPerSecond)
+    {
+        if (radPerSecond == 0.0 || !double.IsFinite(radPerSecond))
+        {
+            return Absent;
+        }
+
+        var turnDays =
+            AstroConstants.TwoPi / Math.Abs(radPerSecond) / AstroConstants.SecondsPerDay;
+
+        if (turnDays > TurnAsDurationThresholdDays)
+        {
+            return Format(
+                AstroConstants.RadPerSecondToArcsecPerCentury(radPerSecond),
+                "N2",
+                " ″/século");
+        }
+
+        // O sinal fica no número de voltas, e não no tempo: uma volta a cada tanto tempo,
+        // ou menos uma volta, que é a mesma volta ao contrário.
+        var turns = radPerSecond < 0.0 ? "−1 volta / " : "1 volta / ";
+
+        return turns + Duration(turnDays);
+    }
+
     /// <summary>Grandeza adimensional, como a excentricidade.</summary>
     public static string Ratio(double value) => Format(value, "N4");
 

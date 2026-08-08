@@ -41,8 +41,18 @@ public readonly record struct BodyReport
 
     public double SpeedRelativeToRootKmS { get; init; }
 
-    /// <summary>Elementos da órbita. Nulos para a raiz, que não orbita nada.</summary>
+    /// <summary>
+    /// Elementos da órbita como estão nesta data, com as taxas seculares já aplicadas —
+    /// e não os de J2000. É por isso que o argumento do periápside no painel se mexe
+    /// quando o tempo corre. Nulos para a raiz, que não orbita nada.
+    /// </summary>
     public OrbitalElements? Elements { get; init; }
+
+    /// <summary>
+    /// Quanto o periápside gira por segundo, somando relatividade, achatamento do pai e
+    /// o que o arquivo declarar. Zero quando a órbita não precessa.
+    /// </summary>
+    public double ApsidalPrecessionRadPerSecond { get; init; }
 
     /// <summary>
     /// Período orbital. Infinito quando a órbita é aberta, porque não há volta a
@@ -106,19 +116,21 @@ public readonly record struct BodyReport
             IsDynamic = sim.IsDynamic(bodyId),
         };
 
-        if (body.Elements is not { } elements)
+        if (sim.ElementsAt(bodyId, julianDate) is not { } elements)
         {
             return report;
         }
 
         var mu = sim.GravitationalParameterOf(bodyId);
 
-        var trueAnomaly = KeplerPropagator.TrueAnomalyAt(
-            elements, mu, julianDate - AstroConstants.J2000);
+        // Deslocamento zero: os elementos consultados já se referem a esta data.
+        var trueAnomaly = KeplerPropagator.TrueAnomalyAt(elements, mu, 0.0);
 
         return report with
         {
             Elements = elements,
+            ApsidalPrecessionRadPerSecond =
+                sim.SecularRatesOf(bodyId).ArgumentOfPeriapsisRadPerSecond,
             PeriodDays = elements.IsClosed
                 ? KeplerPropagator.OrbitalPeriodDays(elements.SemiMajorAxisKm, mu)
                 : double.PositiveInfinity,

@@ -30,6 +30,11 @@ public sealed class SimEngine
     // hierarquia.
     private double[] _mu;
 
+    // Taxa secular total de cada corpo: a declarada no arquivo mais a que a física
+    // impõe. Calculada uma vez por remontagem, e não a cada quadro, porque só muda
+    // quando a órbita ou o pai mudam.
+    private OrbitalElementRates[] _rates;
+
     // Reaproveitados a cada quadro: o caminho de propagação roda a 60 Hz e não deve
     // gerar lixo para o coletor.
     private StateVector[] _globals;
@@ -44,6 +49,7 @@ public sealed class SimEngine
 
         _hierarchy = BodyHierarchy.Create(_bodies);
         _mu = new double[_hierarchy.Count];
+        _rates = new OrbitalElementRates[_hierarchy.Count];
         _globals = new StateVector[_hierarchy.Count];
         _states = new BodyState[_hierarchy.Count];
 
@@ -106,8 +112,44 @@ public sealed class SimEngine
     public StateVector LocalStateAt(string bodyId, double julianDate)
         => LocalStateOf(_hierarchy.IndexOf(bodyId), julianDate - AstroConstants.J2000);
 
-    /// <summary>Elementos da órbita vigente de um corpo, ou nulo se ele for a raiz.</summary>
+    /// <summary>
+    /// Elementos da órbita vigente de um corpo referidos a J2000, ou nulo se ele for a
+    /// raiz. É o que o arquivo declara; para o que a órbita é hoje, ver
+    /// <see cref="ElementsAt"/>.
+    /// </summary>
     public OrbitalElements? ElementsOf(string bodyId) => _hierarchy.Get(bodyId).Elements;
+
+    /// <summary>
+    /// Os elementos como estão em uma data, com as taxas seculares já aplicadas e a
+    /// anomalia média referida a essa mesma data.
+    /// </summary>
+    public OrbitalElements? ElementsAt(string bodyId, double julianDate)
+    {
+        var index = _hierarchy.IndexOf(bodyId);
+        var body = _hierarchy[index];
+
+        if (body.Elements is not { } elements)
+        {
+            return null;
+        }
+
+        // Para um corpo dinâmico quem manda é o arco daquela data, que já é a órbita
+        // vigente e não tem taxa a aplicar.
+        if (_trajectories.TryGetValue(body.Id, out var trajectory))
+        {
+            return trajectory.At(julianDate).Elements;
+        }
+
+        return SecularPropagator.ElementsAt(
+            elements, _rates[index], _mu[index], julianDate - AstroConstants.J2000);
+    }
+
+    /// <summary>
+    /// Quanto os elementos deste corpo andam por segundo, somando o que o arquivo
+    /// declara e o que a física impõe. Tudo zero significa órbita fixa.
+    /// </summary>
+    public OrbitalElementRates SecularRatesOf(string bodyId)
+        => _rates[_hierarchy.IndexOf(bodyId)];
 
     /// <summary>
     /// Parâmetro gravitacional que rege a órbita vigente deste corpo, em km³/s². Vale
@@ -260,7 +302,15 @@ public sealed class SimEngine
     {
         var anterior = _bodies.ToList();
 
+        var trajetoriaAnterior =
+            _trajectories.TryGetValue(body.Id, out var existente) ? existente : null;
+
         _bodies.Add(body);
+
+        // A trajetória entra antes da remontagem porque é ela que identifica o corpo como
+        // dinâmico, e a remontagem calcula as taxas seculares — que um corpo dinâmico não
+        // tem. Registrada depois, a sonda nasceria precessando pelo achatamento do pai.
+        _trajectories[body.Id] = trajectory;
 
         try
         {
@@ -273,11 +323,19 @@ public sealed class SimEngine
         {
             _bodies.Clear();
             _bodies.AddRange(anterior);
+
+            if (trajetoriaAnterior is null)
+            {
+                _trajectories.Remove(body.Id);
+            }
+            else
+            {
+                _trajectories[body.Id] = trajetoriaAnterior;
+            }
+
             Rebuild();
             throw;
         }
-
-        _trajectories[body.Id] = trajectory;
 
         StructureChanged?.Invoke();
         Publish();
@@ -290,6 +348,7 @@ public sealed class SimEngine
         if (_mu.Length != _hierarchy.Count)
         {
             _mu = new double[_hierarchy.Count];
+            _rates = new OrbitalElementRates[_hierarchy.Count];
             _globals = new StateVector[_hierarchy.Count];
             _states = new BodyState[_hierarchy.Count];
         }
@@ -298,6 +357,38 @@ public sealed class SimEngine
         {
             _mu[index] = EffectiveMu(index);
         }
+
+        // Em uma segunda passada, porque a taxa de origem física depende do mu efetivo
+        // que a passada anterior acabou de calcular.
+        for (var index = 0; index < _hierarchy.Count; index++)
+        {
+            _rates[index] = TotalRatesOf(index);
+        }
+    }
+
+    /// <summary>
+    /// A taxa declarada no arquivo somada à que a física impõe: precessão relativística
+    /// do periápside e efeito do achatamento do pai.
+    /// </summary>
+    /// <remarks>
+    /// Corpo dinâmico não entra: a órbita dele é o arco vigente, obtido de um vetor de
+    /// estado por um caminho que assume dois corpos puros. Aplicar taxa ali faria a
+    /// conversão de ida e a de volta discordarem.
+    /// </remarks>
+    private OrbitalElementRates TotalRatesOf(int index)
+    {
+        var body = _hierarchy[index];
+
+        if (body.Elements is not { } elements
+            || _hierarchy.ParentOf(index) is not { } parent
+            || _trajectories.ContainsKey(body.Id))
+        {
+            return OrbitalElementRates.None;
+        }
+
+        return body.Rates
+            + SecularPerturbations.For(
+                elements, _mu[index], parent.J2, parent.J2ReferenceRadiusKm);
     }
 
     /// <summary>
@@ -380,7 +471,7 @@ public sealed class SimEngine
         }
 
         return body.Elements is { } elements
-            ? KeplerPropagator.StateAt(elements, _mu[index], daysSinceEpoch)
+            ? SecularPropagator.StateAt(elements, _rates[index], _mu[index], daysSinceEpoch)
             : default;
     }
 

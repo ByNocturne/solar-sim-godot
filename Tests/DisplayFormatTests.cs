@@ -40,6 +40,59 @@ public sealed class DisplayFormatTests
         Assert.Equal("0,000°", DisplayFormat.Angle(0.0));
     }
 
+    /// <summary>
+    /// A precessão sai em segundos de arco por século porque é a única unidade em que o
+    /// número é legível: a mesma taxa em graus por segundo teria treze zeros.
+    /// </summary>
+    [Fact]
+    public void PrecessaoSaiEmSegundosDeArcoPorSeculo()
+    {
+        var umSegundoDeArcoPorSeculo = AstroConstants.TwoPi
+            / (360.0 * 3600.0)
+            / AstroConstants.SecondsPerJulianCentury;
+
+        Assert.Equal("1,00 ″/século", DisplayFormat.PrecessionRate(umSegundoDeArcoPorSeculo));
+        Assert.Equal("-1,00 ″/século", DisplayFormat.PrecessionRate(-umSegundoDeArcoPorSeculo));
+    }
+
+    /// <summary>
+    /// A unidade da literatura pressupõe a precessão lenta de um planeta. O periápside de
+    /// Io dá uma volta a cada quatro anos, e em ″/século isso são trinta milhões: um
+    /// número que ocupa a coluna inteira sem dizer nada. O tempo da volta diz.
+    /// </summary>
+    [Fact]
+    public void PrecessaoRapidaSaiComoOTempoDeUmaVolta()
+    {
+        var quatroAnos = 4.0 * 365.25 * AstroConstants.SecondsPerDay;
+        var umaVoltaEmQuatroAnos = AstroConstants.TwoPi / quatroAnos;
+
+        Assert.Equal("1 volta / 4,00 anos", DisplayFormat.PrecessionRate(umaVoltaEmQuatroAnos));
+    }
+
+    /// <summary>
+    /// Precessão retrógrada é a mesma volta ao contrário, e o sinal fica no número de
+    /// voltas: um tempo negativo não existe.
+    /// </summary>
+    [Fact]
+    public void PrecessaoRetrogradaRapidaLevaOSinalNaVolta()
+    {
+        var quatroAnos = 4.0 * 365.25 * AstroConstants.SecondsPerDay;
+
+        Assert.Equal(
+            "−1 volta / 4,00 anos",
+            DisplayFormat.PrecessionRate(-AstroConstants.TwoPi / quatroAnos));
+    }
+
+    /// <summary>
+    /// Órbita que não precessa mostra traço, e não "0,00 ″/século": zero exato ali quer
+    /// dizer que o efeito não se aplica, não que ele foi medido e deu zero.
+    /// </summary>
+    [Fact]
+    public void PrecessaoNulaViraTraco()
+    {
+        Assert.Equal(DisplayFormat.Absent, DisplayFormat.PrecessionRate(0.0));
+    }
+
     [Fact]
     public void TaxaDeTempoDizQuantoAvancaPorSegundoReal()
     {

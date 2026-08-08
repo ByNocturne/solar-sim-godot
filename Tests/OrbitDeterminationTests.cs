@@ -138,26 +138,33 @@ public sealed class OrbitDeterminationTests
         const double dias = 4_000.0;
         var estado = sim.LocalStateAt(bodyId, AstroConstants.J2000 + dias);
 
+        // A comparação é contra os elementos daquela data, e não contra os de J2000: com
+        // as taxas seculares do M15 os dois deixaram de ser a mesma coisa. Io é o caso
+        // extremo — o achatamento de Júpiter faz o nodo dela dar meia volta em 4000 dias.
+        var naData = sim.ElementsAt(bodyId, AstroConstants.J2000 + dias)!.Value;
+
         var recuperados = OrbitDetermination.ElementsFrom(estado, mu, dias);
 
         Assert.Equal(
-            tabelados.SemiMajorAxisKm,
+            naData.SemiMajorAxisKm,
             recuperados.SemiMajorAxisKm,
-            tolerance: tabelados.SemiMajorAxisKm * 1e-10);
+            tolerance: naData.SemiMajorAxisKm * 1e-10);
 
-        Assert.Equal(tabelados.Eccentricity, recuperados.Eccentricity, tolerance: 1e-10);
-        Assert.Equal(tabelados.InclinationRad, recuperados.InclinationRad, tolerance: 1e-10);
+        Assert.Equal(naData.Eccentricity, recuperados.Eccentricity, tolerance: 1e-10);
+        Assert.Equal(naData.InclinationRad, recuperados.InclinationRad, tolerance: 1e-10);
 
         AssertAnguloIgual(
-            tabelados.LongitudeOfAscendingNodeRad,
+            naData.LongitudeOfAscendingNodeRad,
             recuperados.LongitudeOfAscendingNodeRad,
             1e-9);
 
         AssertAnguloIgual(
-            tabelados.ArgumentOfPeriapsisRad,
+            naData.ArgumentOfPeriapsisRad,
             recuperados.ArgumentOfPeriapsisRad,
             1e-9);
 
+        // A anomalia média volta referida a J2000, e nenhum destes corpos tem semi-eixo
+        // andando, então ela precisa bater com a tabelada mesmo depois da precessão.
         AssertAnguloIgual(
             tabelados.MeanAnomalyAtEpochRad, recuperados.MeanAnomalyAtEpochRad, 1e-7);
     }
@@ -178,26 +185,31 @@ public sealed class OrbitDeterminationTests
 
         Assert.True(tabelados.InclinationRad < 0.0);
 
+        // Os elementos da data, porque o periélio da Terra avança 3,8 segundos de arco
+        // por século pela relatividade, e em 4000 dias isso já é maior que a tolerância.
+        var naData = sim.ElementsAt("earth", AstroConstants.J2000 + 4_000.0)!.Value;
+
         var estado = sim.LocalStateAt("earth", AstroConstants.J2000 + 4_000.0);
         var recuperados = OrbitDetermination.ElementsFrom(estado, mu, 4_000.0);
 
-        Assert.Equal(-tabelados.InclinationRad, recuperados.InclinationRad, tolerance: 1e-16);
+        Assert.Equal(-naData.InclinationRad, recuperados.InclinationRad, tolerance: 1e-16);
 
         AssertAnguloIgual(
-            tabelados.LongitudeOfAscendingNodeRad + Math.PI,
+            naData.LongitudeOfAscendingNodeRad + Math.PI,
             recuperados.LongitudeOfAscendingNodeRad,
             1e-9);
 
         AssertAnguloIgual(
-            tabelados.ArgumentOfPeriapsisRad + Math.PI,
+            naData.ArgumentOfPeriapsisRad + Math.PI,
             recuperados.ArgumentOfPeriapsisRad,
             1e-9);
 
         // A prova de que as duas formas são a mesma órbita: elas propagam para o mesmo
-        // lugar em qualquer data, e não só naquela em que o estado foi medido.
+        // lugar em qualquer data, e não só naquela em que o estado foi medido. A
+        // comparação é entre duas órbitas fixas, sem a precessão, que aqui só atrapalharia.
         foreach (var dia in new[] { -20_000.0, 0.0, 4_000.0, 50_000.0 })
         {
-            var esperado = KeplerPropagator.StateAt(tabelados, mu, dia);
+            var esperado = KeplerPropagator.StateAt(naData, mu, dia - 4_000.0);
             var obtido = KeplerPropagator.StateAt(recuperados, mu, dia);
 
             var desvio = (obtido.PositionKm - esperado.PositionKm).Magnitude;

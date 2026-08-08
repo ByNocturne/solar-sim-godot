@@ -45,7 +45,8 @@ public partial class InspectorPanel : CanvasLayer
         Inclination,
         AscendingNode,
         ArgumentOfPeriapsis,
-        MeanAnomalyAtEpoch,
+        ApsidalPrecession,
+        MeanAnomaly,
         TrueAnomaly,
         Periapsis,
         Apoapsis,
@@ -81,9 +82,11 @@ public partial class InspectorPanel : CanvasLayer
         [Row.AscendingNode] =
             "Longitude do nó ascendente (Ω): onde a órbita cruza o plano de referência subindo.",
         [Row.ArgumentOfPeriapsis] =
-            "Argumento do periápside (ω): ângulo do nó ascendente até o ponto mais próximo do foco.",
-        [Row.MeanAnomalyAtEpoch] =
-            "Anomalia média em J2000: posição angular média na época de referência.",
+            "Argumento do periápside (ω): ângulo do nó ascendente até o ponto mais próximo do foco. Mostrado na data atual, já com a precessão.",
+        [Row.ApsidalPrecession] =
+            "Quanto o periápside gira por século: relatividade geral mais achatamento do corpo pai. Em Mercúrio são os 43″/século que a gravitação newtoniana não explicava.",
+        [Row.MeanAnomaly] =
+            "Anomalia média na data atual: posição angular que o corpo teria se a órbita fosse percorrida a velocidade constante.",
         [Row.TrueAnomaly] =
             "Anomalia verdadeira: ângulo atual entre o periápside e a posição do corpo, no foco.",
         [Row.Periapsis] = "Distância mínima ao atrator (periélio se o atrator for o Sol).",
@@ -251,9 +254,16 @@ public partial class InspectorPanel : CanvasLayer
             Row.ArgumentOfPeriapsis,
             "Arg. do periápside",
             OrbitOnly(DisplayFormat.Angle(elements.ArgumentOfPeriapsisRad)));
+
+        Show(Row.ApsidalPrecession, report.ApsidalPrecessionRadPerSecond != 0.0);
         Set(
-            Row.MeanAnomalyAtEpoch,
-            "Anom. média (J2000)",
+            Row.ApsidalPrecession,
+            "Precessão do periáps.",
+            DisplayFormat.PrecessionRate(report.ApsidalPrecessionRadPerSecond));
+
+        Set(
+            Row.MeanAnomaly,
+            "Anom. média",
             OrbitOnly(DisplayFormat.Angle(elements.MeanAnomalyAtEpochRad)));
         Set(
             Row.TrueAnomaly,

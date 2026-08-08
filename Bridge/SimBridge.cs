@@ -393,7 +393,9 @@ public partial class SimBridge : Node3D
     /// </remarks>
     public Vector3D[] SampleOrbitKm(string bodyId)
     {
-        if (_sim.ElementsOf(bodyId) is not { } elements)
+        // Os elementos da data, e não os de J2000: com as taxas seculares ligadas, é o
+        // que faz o traço desenhado girar junto com a órbita que ele representa.
+        if (_sim.ElementsAt(bodyId, _sim.Time.JulianDate) is not { } elements)
         {
             return [];
         }
@@ -421,6 +423,23 @@ public partial class SimBridge : Node3D
 
         return samples;
     }
+
+    /// <summary>
+    /// O menor giro da órbita que o traço amostrado consegue mostrar. Girar menos que
+    /// isso move cada vértice para menos de um passo de amostragem: reamostrar antes
+    /// disso é redesenhar a mesma curva.
+    /// </summary>
+    public const double OrbitAngularResolutionRad = AstroConstants.TwoPi / OrbitSamples;
+
+    /// <summary>
+    /// Como a órbita está orientada agora, para quem guarda um traço amostrado e precisa
+    /// saber se ele envelheceu. A precessão gira nodo e periápside, e é só isso que muda
+    /// a curva no espaço enquanto o corpo não troca de pai nem de arco.
+    /// </summary>
+    public (double NodeRad, double PeriapsisRad) OrbitOrientation(string bodyId)
+        => _sim.ElementsAt(bodyId, _sim.Time.JulianDate) is { } elements
+            ? (elements.LongitudeOfAscendingNodeRad, elements.ArgumentOfPeriapsisRad)
+            : (0.0, 0.0);
 
     /// <summary>Verdadeiro se a órbita do corpo fecha, e portanto o traço dela também.</summary>
     public bool HasClosedOrbit(string bodyId)

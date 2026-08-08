@@ -126,6 +126,8 @@ public static class DataLoader
             throw new SystemDataException($"Corpo '{id}': 'radiusKm' precisa ser positivo.");
         }
 
+        var elements = ToElements(dto, id);
+
         return new CelestialBodyData
         {
             Id = id,
@@ -133,9 +135,84 @@ public static class DataLoader
             ParentId = dto.Parent,
             MuKm3S2 = mu,
             RadiusKm = radius,
+            J2 = Oblateness(dto, id),
+            J2ReferenceRadiusKm = EquatorialRadiusKm(dto, id, radius),
             ColorRgb = ParseColor(dto.ColorRgb, id),
-            Elements = ToElements(dto, id),
+            Elements = elements,
+            Rates = ToRates(dto.Orbit?.Rates, elements, id),
         };
+    }
+
+    private static double Oblateness(BodyDto dto, string id)
+    {
+        if (dto.J2 is not { } j2)
+        {
+            return 0.0;
+        }
+
+        if (!double.IsFinite(j2) || j2 < 0.0)
+        {
+            throw new SystemDataException(
+                $"Corpo '{id}': 'j2' precisa ser um número não negativo. O achatamento é "
+                    + "adimensional e da ordem de 10⁻³ para a Terra.");
+        }
+
+        return j2;
+    }
+
+    /// <summary>
+    /// O raio de referência do J₂. Ausente, vale o raio do corpo — o que é uma
+    /// aproximação, já que o achatamento é publicado contra o raio equatorial e
+    /// <c>radiusKm</c> costuma ser o médio.
+    /// </summary>
+    private static double EquatorialRadiusKm(BodyDto dto, string id, double radiusKm)
+    {
+        if (dto.EquatorialRadiusKm is not { } equatorial)
+        {
+            return radiusKm;
+        }
+
+        if (!double.IsFinite(equatorial) || equatorial <= 0.0)
+        {
+            throw new SystemDataException(
+                $"Corpo '{id}': 'equatorialRadiusKm' precisa ser positivo.");
+        }
+
+        return equatorial;
+    }
+
+    /// <summary>
+    /// As taxas seculares declaradas. Só fazem sentido na órbita fechada: na aberta o
+    /// corpo passa uma vez, e uma taxa por século não descreve nada.
+    /// </summary>
+    private static OrbitalElementRates ToRates(
+        RatesDto? rates,
+        OrbitalElements? elements,
+        string id)
+    {
+        if (rates is null)
+        {
+            return OrbitalElementRates.None;
+        }
+
+        if (elements is not { IsClosed: true })
+        {
+            throw new SystemDataException(
+                $"Corpo '{id}': 'orbit.rates' só vale para órbita fechada.");
+        }
+
+        return OrbitalElementRates.FromPerCentury(
+            OptionalFinite(rates.SemiMajorAxisKmPerCentury, id, "orbit.rates.semiMajorAxisKmPerCentury"),
+            OptionalFinite(rates.EccentricityPerCentury, id, "orbit.rates.eccentricityPerCentury"),
+            OptionalFinite(rates.InclinationDegPerCentury, id, "orbit.rates.inclinationDegPerCentury"),
+            OptionalFinite(
+                rates.LongitudeOfAscendingNodeDegPerCentury,
+                id,
+                "orbit.rates.longitudeOfAscendingNodeDegPerCentury"),
+            OptionalFinite(
+                rates.ArgumentOfPeriapsisDegPerCentury,
+                id,
+                "orbit.rates.argumentOfPeriapsisDegPerCentury"));
     }
 
     private static OrbitalElements? ToElements(BodyDto dto, string id)
@@ -245,6 +322,22 @@ public static class DataLoader
         }
     }
 
+    /// <summary>Campo opcional que, se vier, precisa ser número: ausente vale zero.</summary>
+    private static double OptionalFinite(double? value, string id, string field)
+    {
+        if (value is not { } number)
+        {
+            return 0.0;
+        }
+
+        if (!double.IsFinite(number))
+        {
+            throw new SystemDataException($"Corpo '{id}': o campo '{field}' não é um número.");
+        }
+
+        return number;
+    }
+
     private static double RequireFinite(double? value, string id, string field)
     {
         if (value is not { } number)
@@ -333,6 +426,12 @@ public static class DataLoader
         [JsonPropertyName("radiusKm")]
         public double? RadiusKm { get; init; }
 
+        [JsonPropertyName("j2")]
+        public double? J2 { get; init; }
+
+        [JsonPropertyName("equatorialRadiusKm")]
+        public double? EquatorialRadiusKm { get; init; }
+
         [JsonPropertyName("colorRgb")]
         public string? ColorRgb { get; init; }
 
@@ -365,5 +464,31 @@ public static class DataLoader
 
         [JsonPropertyName("meanAnomalyAtEpochDeg")]
         public double? MeanAnomalyAtEpochDeg { get; init; }
+
+        [JsonPropertyName("rates")]
+        public RatesDto? Rates { get; init; }
+    }
+
+    // Taxas seculares residuais: o que sobra depois da relatividade e do achatamento, que
+    // o motor calcula sozinho. Todos os campos são opcionais e valem zero quando ausentes.
+    private sealed record RatesDto
+    {
+        [JsonPropertyName("semiMajorAxisKmPerCentury")]
+        public double? SemiMajorAxisKmPerCentury { get; init; }
+
+        [JsonPropertyName("eccentricityPerCentury")]
+        public double? EccentricityPerCentury { get; init; }
+
+        [JsonPropertyName("inclinationDegPerCentury")]
+        public double? InclinationDegPerCentury { get; init; }
+
+        [JsonPropertyName("longitudeOfAscendingNodeDegPerCentury")]
+        public double? LongitudeOfAscendingNodeDegPerCentury { get; init; }
+
+        [JsonPropertyName("argumentOfPeriapsisDegPerCentury")]
+        public double? ArgumentOfPeriapsisDegPerCentury { get; init; }
+
+        [JsonPropertyName("note")]
+        public string? Note { get; init; }
     }
 }

@@ -23,8 +23,28 @@ public sealed record CelestialBodyData
 
     public double RadiusKm { get; init; }
 
+    /// <summary>
+    /// Coeficiente de achatamento deste corpo. Como o mu, é usado pelos filhos e não por
+    /// ele mesmo: quem sente o achatamento da Terra é a Lua, não a Terra.
+    /// </summary>
+    public double J2 { get; init; }
+
+    /// <summary>
+    /// Raio a que o <see cref="J2"/> se refere, em km. O achatamento é publicado sempre
+    /// junto de um raio, e usar outro escala o efeito pelo quadrado da diferença.
+    /// </summary>
+    public double J2ReferenceRadiusKm { get; init; }
+
     /// <summary>Nulo para a raiz, que não orbita nada.</summary>
     public OrbitalElements? Elements { get; init; }
+
+    /// <summary>
+    /// Taxas seculares declaradas no arquivo, que descrevem o que o motor não modela.
+    /// Relatividade e achatamento não entram aqui: são calculados em
+    /// <see cref="Core.SecularPerturbations"/>, e declarar de novo seria contá-los duas
+    /// vezes.
+    /// </summary>
+    public OrbitalElementRates Rates { get; init; }
 
     /// <summary>Cor em 0xRRGGBB. Guardada como inteiro para não depender do Godot.</summary>
     public uint ColorRgb { get; init; } = 0xFFFFFF;

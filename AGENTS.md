@@ -16,7 +16,12 @@ O M7 acrescentou missões: trajetórias hiperbólicas, conversão de vetor de es
 elementos, corpos criados em runtime, emenda de cônicas por esfera de influência e
 save/load. A Fase 2 (M8–M14) acrescenta termodinâmica, escape atmosférico, magnetosfera,
 aquecimento de maré, BHI, ciclos diurno/sazonal, biosignatures, evolução geológica
-f(JD) e HUD de ensino (`I`). O que vem depois está no backlog do [ROADMAP.md](ROADMAP.md).
+f(JD) e HUD de ensino (`I`). A Fase 3 é astrodinâmica analítica: o M15 já entregou
+elementos que andam com o tempo, com precessão por relatividade geral e pelo achatamento
+do corpo pai — o periélio de Mercúrio avança os 43″/século conhecidos. Faltam M16 a M19:
+catálogo curado de corpos menores com importador offline, Roche/anéis, Yarkovsky e
+Lambert/Δv. Ideias maiores (“O simulador”, N-corpos híbrido) ficam no backlog sem fase —
+ver [ROADMAP.md](ROADMAP.md).
 
 Para ver rodando: abra o projeto no Godot e pressione F5, ou `godot --path .`. Espaço pausa, setas ajustam a velocidade, R volta
 para J2000, Tab e Shift+Tab ancoram a câmera no corpo seguinte e no anterior, um clique
@@ -94,6 +99,12 @@ lua é editá-lo. A unidade está no nome do campo — `radiusKm`, `inclinationD
 e a carga converte graus para radianos e unidades astronômicas para quilômetros. A
 validação recusa pai inexistente, ciclo na hierarquia, campo ausente e campo com nome
 desconhecido, sempre dizendo qual corpo e qual campo.
+
+Os elementos são os de J2000 e andam com o tempo por duas vias. `j2` e
+`equatorialRadiusKm` descrevem o achatamento do corpo, que afeta quem o orbita e não ele
+mesmo; junto com a relatividade geral, o motor deriva daí a precessão sozinho. `orbit.rates`
+existe para o que o motor **não** modela, em graus por século — declarar ali um efeito já
+calculado é contá-lo duas vezes.
 
 ## Corpos que não vêm do arquivo
 

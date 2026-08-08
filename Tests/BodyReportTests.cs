@@ -90,6 +90,60 @@ public sealed class BodyReportTests
     }
 
     /// <summary>
+    /// O painel mostra a órbita de hoje, não a de J2000: é isso que faz o argumento do
+    /// periápside de Mercúrio se mexer conforme o tempo corre, em vez de ficar preso no
+    /// valor tabelado.
+    /// </summary>
+    [Fact]
+    public void OInspetorMostraOPeriapsideJaPrecessado()
+    {
+        var sim = SolarSystem.NewEngine();
+
+        var naEpoca = BodyReport.For(sim, "mercury", AstroConstants.J2000);
+
+        var umSeculoDepois = BodyReport.For(
+            sim, "mercury", AstroConstants.J2000 + AstroConstants.DaysPerJulianCentury);
+
+        Assert.NotEqual(
+            naEpoca.Elements!.Value.ArgumentOfPeriapsisRad,
+            umSeculoDepois.Elements!.Value.ArgumentOfPeriapsisRad);
+
+        // O mesmo número que a linha de precessão do painel exibe, e que o teste do motor
+        // fixa em 43 segundos de arco por século.
+        Assert.InRange(
+            AstroConstants.RadPerSecondToArcsecPerCentury(
+                naEpoca.ApsidalPrecessionRadPerSecond),
+            42.5,
+            43.5);
+    }
+
+    /// <summary>
+    /// Corpo sem precessão declara zero, e o painel troca isso por um traço em vez de
+    /// exibir uma taxa que não existe.
+    /// </summary>
+    [Fact]
+    public void SondaNaoTemPrecessaoADeclarar()
+    {
+        var sim = SolarSystem.NewEngine();
+
+        sim.AddFromState(
+            new CelestialBodyData
+            {
+                Id = "probe1",
+                Name = "Sonda",
+                ParentId = "earth",
+                MuKm3S2 = 0.0,
+                RadiusKm = 0.0,
+            },
+            new StateVector(new Vector3D(20_000.0, 0.0, 0.0), new Vector3D(0.0, 4.0, 0.0)),
+            AstroConstants.J2000);
+
+        var sonda = BodyReport.For(sim, "probe1", AstroConstants.J2000);
+
+        Assert.Equal(0.0, sonda.ApsidalPrecessionRadPerSecond);
+    }
+
+    /// <summary>
     /// A anomalia verdadeira mostrada tem que ser a do ponto onde o corpo está, e não um
     /// ângulo qualquer que cresce com o tempo. A equação da cônica amarra as duas coisas.
     /// </summary>

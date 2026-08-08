@@ -264,6 +264,80 @@ public sealed class DataLoaderTests
     }
 
     [Fact]
+    public void AchatamentoEORaioDeReferenciaCarregamDoArquivoReal()
+    {
+        var terra = DataLoader.Parse(SolarSystem.Json).Single(corpo => corpo.Id == "earth");
+
+        Assert.Equal(1.08262668e-3, terra.J2);
+
+        // O raio equatorial, e não o médio de 6371 km: o J₂ é publicado contra ele, e a
+        // taxa de precessão escala com o quadrado da razão entre os dois.
+        Assert.Equal(6_378.137, terra.J2ReferenceRadiusKm);
+    }
+
+    [Fact]
+    public void SemRaioEquatorialOAchatamentoSeRefereAoRaioDoCorpo()
+    {
+        var corpo = DataLoader.Parse(Documento("""
+            { "id": "sun", "name": "Sol", "parent": null,
+              "muKm3S2": 1.0, "radiusKm": 1234.0, "j2": 1.0e-3 }
+            """))[0];
+
+        Assert.Equal(1234.0, corpo.J2ReferenceRadiusKm);
+    }
+
+    [Fact]
+    public void AchatamentoNegativoFalha()
+    {
+        var erro = Assert.Throws<SystemDataException>(() => DataLoader.Parse(Documento("""
+            { "id": "sun", "name": "Sol", "parent": null,
+              "muKm3S2": 1.0, "radiusKm": 1.0, "j2": -1.0e-3 }
+            """)));
+
+        Assert.Contains("j2", erro.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TaxaSecularEmGrausPorSeculoViraRadianoPorSegundo()
+    {
+        var corpo = DataLoader.Parse(Documento($$"""
+            {{Sol}},
+            { "id": "planeta", "name": "Planeta", "parent": "sun",
+              "muKm3S2": 1.0, "radiusKm": 1.0,
+              "orbit": { "semiMajorAxisAu": 1.0, "eccentricity": 0.0,
+                "inclinationDeg": 0.0, "longitudeOfAscendingNodeDeg": 0.0,
+                "argumentOfPeriapsisDeg": 0.0, "meanAnomalyAtEpochDeg": 0.0,
+                "rates": { "argumentOfPeriapsisDegPerCentury": 1.0 } } }
+            """))[1];
+
+        Assert.Equal(
+            AstroConstants.DegreesToRadians(1.0) / AstroConstants.SecondsPerJulianCentury,
+            corpo.Rates.ArgumentOfPeriapsisRadPerSecond,
+            tolerance: 1e-24);
+
+        // O que não foi declarado fica zerado, em vez de virar um valor plausível
+        // inventado pelo desserializador.
+        Assert.Equal(0.0, corpo.Rates.EccentricityPerSecond);
+    }
+
+    [Fact]
+    public void TaxaSecularEmOrbitaAbertaFalha()
+    {
+        var erro = Assert.Throws<SystemDataException>(() => DataLoader.Parse(Documento($$"""
+            {{Sol}},
+            { "id": "cometa", "name": "Cometa", "parent": "sun",
+              "muKm3S2": 1.0, "radiusKm": 1.0,
+              "orbit": { "semiMajorAxisAu": -1.0, "eccentricity": 1.6,
+                "inclinationDeg": 0.0, "longitudeOfAscendingNodeDeg": 0.0,
+                "argumentOfPeriapsisDeg": 0.0, "meanAnomalyAtEpochDeg": 0.0,
+                "rates": { "eccentricityPerCentury": 0.1 } } }
+            """)));
+
+        Assert.Contains("cometa", erro.Message, StringComparison.Ordinal);
+        Assert.Contains("rates", erro.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void EpocaDiferenteDeJ2000Falha()
     {
         var json = Documento(Sol).Replace("2451545.0", "2451546.0", StringComparison.Ordinal);

@@ -828,6 +828,189 @@ Absorve do backlog: HUD de ensino/explicações (sem lore narrativo).
 
 
 
+## Fase 3 — Astrodinâmica avançada (M15–M19)
+
+Volta o foco à órbita e às missões, sem abandonar os quatro invariantes. A propagação
+continua **analítica**: elementos que evoluem com o tempo por taxas / fórmulas fechadas
+(`f(JD)`). Não há integrador N-corpos nesta fase.
+
+**Decisões:**
+
+- Catálogo de corpos menores **curado** no repositório + **importador offline** (CLI ou
+  ferramenta explícita). Em runtime o simulador **não** consulta rede.
+- Roche / anéis / Yarkovsky como avaliadores ou drifts seculares (espelho da Fase 2).
+- Lambert + janelas Δv + **aplicar impulso** na sonda (novo `TrajectoryArc`).
+- Encontro próximo híbrido, N-corpos global, VSOP/DE e geofísica interna ficam no
+  **Backlog** sem número de fase.
+
+```mermaid
+graph LR
+    M14[M14 Ensino] --> M15[M15 Taxas J2 GR]
+    M7[M7 Missoes] --> M15
+    M15 --> M16[M16 Catalogo]
+    M16 --> M17[M17 Roche aneis]
+    M16 --> M18[M18 Yarkovsky]
+    M15 --> M18
+    M15 --> M19[M19 Lambert Delta-v]
+    M7 --> M19
+```
+
+---
+
+
+
+## M15 — Elementos variáveis e perturbações seculares (J₂ + GR) — **Concluído**
+
+- [x] `Engine/Models/OrbitalElementRates.cs` — quanto cada elemento anda por segundo
+- [x] `Engine/Core/SecularPropagator.cs` — `ElementsAt(JD)` e `StateAt` com taxas
+- [x] Schema JSON: `orbit.rates.*PerCentury`, `j2` e `equatorialRadiusKm`
+- [x] `Engine/Core/SecularPerturbations.cs` — **J₂** (nodal e apsidal) e **GR** (apsidal)
+- [x] `SimEngine` compõe com elementos avaliados em JD; `ElementsAt` e `SecularRatesOf`
+- [x] Teste de ouro: periélio de Mercúrio a 43″/século
+- [x] Regressão JPL intacta, por construção: sem taxa, o caminho é o mesmo de antes
+- [x] Fora do plano: linha de precessão no inspetor, em ″/século ou em tempo de volta, e
+  traço da órbita reamostrado quando a precessão passa da resolução do desenho
+
+### Decisões e desvios
+
+**A taxa entra em forma fechada, não como força por quadro.** É o que mantém o invariante
+4: `SecularPropagator.ElementsAt` devolve os elementos já referidos ao instante pedido, e
+o propagador de sempre os avalia com deslocamento zero. Saltar mil anos custa o mesmo que
+avançar um segundo, e o tempo reverso continua saindo de graça — há teste medindo que um
+século antes da época o periápside está atrasado exatamente o quanto estará adiantado um
+século depois.
+
+**Sem taxa, o caminho é o de antes — o mesmo, não um equivalente.** `StateAt` desvia para
+o `KeplerPropagator` quando as taxas são todas zero. É isso que torna impossível este
+marco mexer na regressão contra o JPL por arredondamento, e existe um teste comparando os
+dois caminhos por igualdade exata, sem tolerância.
+
+**Relatividade e achatamento são calculados, não declarados.** O arquivo só traz o que o
+motor não modela, e a distinção está escrita no JSON: declarar em `rates` um efeito que o
+motor já calcula seria contá-lo duas vezes. Hoje nenhum corpo declara taxa nenhuma; o que
+move as órbitas é inteiramente física.
+
+**A anomalia média ganhou uma integral.** Com o semi-eixo maior andando, o movimento médio
+deixa de ser constante e M₀ + n·t passa a errar a fase, com erro que cresce sem limite. A
+integral de n ao longo do trecho tem forma fechada para semi-eixo linear no tempo, e é ela
+que está no motor — com um ramo em série de Taylor para deriva pequena, que é o caso real,
+porque a forma fechada ali subtrairia dois números quase iguais. Nenhum corpo do arquivo
+tem semi-eixo andando; a peça existe verificada para o M18, e é conferida contra
+integração numérica por Simpson.
+
+**Não há taxa para a anomalia média, e a ausência é proposital.** O avanço dela é o
+movimento médio, que o motor já calcula do semi-eixo. Declarar as duas coisas permitiria
+que discordassem, e a discordância só apareceria como posição errada ao longo da órbita,
+séculos depois.
+
+**Corpo dinâmico não precessa.** A órbita de uma sonda é o arco vigente, obtido de um vetor
+de estado por um caminho que assume dois corpos puros; aplicar taxa ali faria a conversão
+de ida e a de volta discordarem. O teste que fixa isso encontrou um defeito real: a
+trajetória era registrada *depois* da remontagem, então uma sonda recém-criada nascia
+precessando pelo achatamento do pai até a próxima emenda.
+
+**O J₂ só é declarado para quem tem satélite no arquivo.** O achatamento afeta quem orbita
+o corpo, não ele mesmo, então Sol, Terra, Júpiter e Saturno o têm e Marte não ganharia nada
+com o campo. O raio de referência é o equatorial, e não o médio de `radiusKm`: o J₂ é
+publicado contra ele, e a taxa escala com o quadrado da razão entre os dois.
+
+**O inspetor mostra a órbita de hoje.** `BodyReport.Elements` passou a vir de `ElementsAt`,
+e não dos elementos de J2000 — por isso a linha do argumento do periápside se mexe. A linha
+"Anom. média (J2000)" virou "Anom. média", porque agora ela se refere à data exibida.
+
+**O traço desenhado reamostra quando a precessão passa da resolução dele.** Amostrar a
+órbita a cada quadro seria gastar 240 pontos por corpo para redesenhar a mesma curva:
+Mercúrio gira o periápside um grau a cada oitenta anos. O corte é o passo da própria
+amostragem — abaixo dele nenhum vértice se move um pixel, acima dele o desenho mentiria.
+Na prática só as luas com J₂ forte reamostram, e ainda assim raramente.
+
+**A precessão rápida sai como o tempo de uma volta.** Segundos de arco por século é a
+unidade da literatura porque a literatura fala de planetas. O periápside de Io, empurrado
+pelo J₂ de Júpiter, dá uma volta a cada quatro anos: em ″/século são trinta milhões, um
+número que ocupa a coluna sem informar. Abaixo de dez mil anos por volta o inspetor
+escreve "1 volta / 3,82 anos", que é a mesma taxa dita de um jeito que se lê.
+
+### Validação
+
+- **Mercúrio a 43″/século**, medido de duas formas independentes: pela taxa e pela
+  diferença entre o argumento do periápside em J2000 e um século depois.
+- **O achatamento do Sol é um milésimo do total** em Mercúrio, o que confirma que a
+  precessão é relativística e não um artefato do J₂ solar.
+- **Órbita baixa terrestre regride os nodos a 4,47°/dia** em inclinação de 51,6°, que é o
+  caso didático conhecido do J₂; e na inclinação crítica de 63,4° o periápside para de
+  girar, com o sinal invertendo dos dois lados.
+- **A Lua não ganha a precessão que não é dela:** o perigeu lunar gira 360° em 8,85 anos
+  por causa do Sol, e o modelo entrega menos de um grau por século. O teste fixa esse
+  limite para que o número na tela não seja confundido com realismo que o motor não tem.
+- **Verificação em execução**, pelo modo Movie Maker, com Mercúrio ancorado: o inspetor
+  mostra "Precessão do periáps. 43,04 ″/século" e o painel inteiro continua cabendo.
+
+**Pronto quando:** ~~Mercúrio tem precessão GR mensurável nos testes; save/load e tempo
+reverso seguem `f(JD)`.~~ **Concluído:** build sem avisos e 430 testes passando, sendo 26
+novos.
+
+---
+
+
+
+## M16 — Catálogo curado de corpos menores + importador offline
+
+- [ ] `Data/minor_bodies_j2000.json` (dezenas: Ceres, Vesta, NEOs, Halley, KBOs, Troianos)
+- [ ] Campos `kind` / família, densidade opcional, visibilidade
+- [ ] Inspetor: família/Troiano e esfera de influência do corpo menor
+- [ ] Filtros na árvore (cinturão, cometas, Troianos) via fachada
+- [ ] Importador offline → JSON local; jogo exportado só lê arquivo
+- [ ] Documentar em `AGENTS.md`: runtime offline
+
+**Pronto quando:** catálogo carrega; importador valida como o loader atual; UI ancora um
+corpo menor com família e SOI visíveis.
+
+---
+
+
+
+## M17 — Limite de Roche, anéis e destino de satélites
+
+Avaliadores `f(JD)`, não simulação de fluidos.
+
+- [ ] `RocheLimitCalculator` (fluido / rígido)
+- [ ] Relatório: margem, estável / em risco / anel potencial
+- [ ] Heurística de anéis (Saturno positivo nos testes)
+- [ ] Expor na Bridge / inspetor / flags de ensino se couber
+
+**Pronto quando:** testes distinguem lua estável vs interior a Roche; Saturno com anéis.
+
+---
+
+
+
+## M18 — Yarkovsky e pressão de radiação (drift secular)
+
+- [ ] Drift documentado em elementos (`da/dt`, etc.), não força por quadro
+- [ ] Só corpos com parâmetros no JSON; planetas ignoram
+- [ ] Teste de ordem de grandeza com fixture ou NEO conhecido
+
+**Pronto quando:** corpo com parâmetros NG muda `a` com JD de forma testável; invariante 4
+preservado.
+
+---
+
+
+
+## M19 — Lambert, janelas Δv e aplicar impulso
+
+- [ ] `LambertSolver` (arco elíptico; hiperbólico só se couber sem estourar escopo)
+- [ ] Preview: A, B, JD partida, tempo de voo → Δv (consulta via `SimBridge`)
+- [ ] Varredura de janelas (grade JD × ToF)
+- [ ] **Aplicar impulso** na sonda ancorada → novo `TrajectoryArc`
+
+**Pronto quando:** Terra→Marte na ordem de grandeza esperada; preview não altera estado;
+aplicar muda a trajetória de forma testável.
+
+---
+
+
+
 ## Estrutura de arquivos alvo
 
 ```
@@ -854,7 +1037,9 @@ solar-sim-godot/
 │   │   ├── DiurnalSeasonalModel.cs      # M12
 │   │   ├── ZoneGridCalculator.cs        # M12
 │   │   ├── BiosignatureEvaluator.cs     # M13
-│   │   └── GeologicalTimeModel.cs       # M13
+│   │   ├── GeologicalTimeModel.cs       # M13
+│   │   ├── SecularPerturbations.cs      # M15: J2 e relatividade como taxa
+│   │   └── SecularPropagator.cs         # M15: elementos avaliados em JD
 │   ├── Models/
 │   │   ├── CelestialBodyData.cs
 │   │   ├── OrbitalElements.cs
@@ -863,7 +1048,8 @@ solar-sim-godot/
 │   │   ├── Vector3D.cs
 │   │   ├── SystemStateSnapshot.cs
 │   │   ├── BodyEnvironment.cs           # M8
-│   │   └── EnvironmentReport.cs         # M8–M13
+│   │   ├── EnvironmentReport.cs         # M8–M13
+│   │   └── OrbitalElementRates.cs       # M15
 │   ├── Data/
 │   │   ├── IBodyRepository.cs
 │   │   ├── DataLoader.cs
@@ -922,21 +1108,35 @@ solar-sim-godot/
 
 ## Backlog
 
-Fora do escopo dos marcos M0–M14, em trilhas separadas:
+Fora do escopo imediato. A **Fase 3 (M15–M19)** absorve taxas seculares, catálogo curado
+de asteroides/cometas, Roche/anéis, Yarkovsky secular e Lambert/janelas + impulso.
+O que sobra aqui **não tem número de fase** — anotações para não esquecer.
 
-### Precisão e missões
+### “O simulador” — precisão e encontros (sem fase)
 
-- Elementos orbitais variáveis no tempo (taxas seculares)
-- Perturbações gravitacionais de terceiro corpo
-- Precisão de nível VSOP87 ou DE440
-- Integração numérica de N-corpos como modo alternativo ao analítico
-- Asteroides e cometas
-- Janelas de transferência e planejamento de manobras
+Melhorias grandes; a mais importante, se um dia for o salto de fidelidade, é a primeira.
+
+- **Encontro próximo híbrido:** só num trecho crítico (ex.: rasante em Júpiter), integrar
+  várias gravidades e gravar o caminho em `TrajectoryArc`; fora disso, manter o modelo
+  analítico. Preserva a ideia de save / tempo reverso via histórico de arcos.
+- **Modo N-corpos do sistema (quase) inteiro:** todo mundo puxa todo mundo o tempo todo.
+  Mais fiel e bem mais caro; save e salto de data ficam difíceis. Só faz sentido se o
+  produto virar efemérides de laboratório.
+- **Perturbação secular de terceiro corpo** (fórmula na data, sem integração contínua) —
+  ex.: efeito médio de Júpiter em asteroides, e a precessão do perigeu lunar, que é solar
+  e por isso o M15 não pegou: pelo achatamento da Terra sozinho a Lua precessaria meio
+  grau por século, contra os 360° em 8,85 anos reais. Entra pela mesma porta que o M15
+  abriu, `OrbitalElementRates`.
+- Precisão de catálogo profissional (**VSOP87** / **DE440**)
+- **Geofísica de estrutura interna** (núcleo/manto) — ciência planetária, outra trilha
+- **Pipeline de catálogo em massa** (milhares de corpos), além do importador pontual do M16
+- Plano orbital das luas no equador do planeta (hoje a eclíptica é aproximação do M3)
 
 ### Render
 
 - Fases de iluminação **visuais** 3D / terminador (a insolação matemática está no M12)
 - Constelações como pano de fundo (catálogo e projeção da esfera celeste)
+- Desenho visual de anéis (o relatório/heurística entra no M17)
 
 ### Empacotamento — Engine host-agnostic
 
@@ -950,7 +1150,8 @@ Godot, `SimBridge`, `UI/` ou `Render/`:
 - Critério: host mínimo fora do Godot roda Sistema Solar + BHI só com assemblies sem Godot
 
 Rotação/obliquidade, HUD de ensino e insolação matemática saíram deste backlog para
-M12 e M14.
+M12 e M14. Taxas seculares, asteroides/cometas e janelas de transferência saem do
+backlog curto quando M15, M16 e M19 forem concluídos.
 
 ---
 
@@ -978,6 +1179,14 @@ graph LR
     M12 --> M13[M13 Biosignatures e tempo geologico]
     M11 --> M14[M14 HUD de ensino]
     M13 --> M14
+    M14 --> M15[M15 Taxas J2 GR]
+    M7 --> M15
+    M15 --> M16[M16 Catalogo]
+    M16 --> M17[M17 Roche]
+    M16 --> M18[M18 Yarkovsky]
+    M15 --> M18
+    M15 --> M19[M19 Lambert]
+    M7 --> M19
 ```
 
 
@@ -990,3 +1199,7 @@ M7 depende tecnicamente só do M2, mas fazê-lo antes do M6 significa escrever c
 missão contra uma camada de renderização que ainda pode mudar.
 
 M14 depende de M11 (relatórios) e fica melhor depois de M13 (biosignatures para explicar).
+
+A Fase 3 (M15–M19) depende do M7 para missões/arcos e fica melhor depois do M14 para não
+misturar duas frentes grandes; M16 pode começar em paralelo ao fechamento fino do M15
+assim que o schema de taxas estiver estável.
