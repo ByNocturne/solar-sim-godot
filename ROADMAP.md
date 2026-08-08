@@ -17,32 +17,38 @@ cada camada é aprofundada. Isso valida a arquitetura cedo, quando corrigir aind
 
 ---
 
+
+
 ## Invariantes arquiteturais
 
 Estas quatro regras valem para todo o projeto e estão espelhadas em `.cursor/rules/`.
 Violá-las não gera um bug imediato e visível — gera erosão silenciosa que só aparece
 muitos marcos depois, quando o conserto já é caro.
 
-1. **Nenhum arquivo em `Engine/` contém `using Godot`.** O motor deve compilar e ser
-   testado sem o Godot sequer instalado. Essa é a definição operacional de domínio puro.
-2. **Toda matemática do domínio em `double`.** A conversão para `float` acontece somente
-   na camada Bridge, e somente *depois* de subtrair a posição da câmera. Converter antes
+1. **Nenhum arquivo em** `Engine/` **contém** `using Godot`**.** O motor deve compilar e ser
+  testado sem o Godot sequer instalado. Essa é a definição operacional de domínio puro.
+2. **Toda matemática do domínio em** `double`**.** A conversão para `float` acontece somente
+  na camada Bridge, e somente *depois* de subtrair a posição da câmera. Converter antes
    é exatamente o que produz trepidação em objetos distantes da origem.
 3. **Unidades internas: quilômetros, segundos, radianos.** Graus existem apenas na
-   fronteira do JSON e no texto exibido ao usuário.
+  fronteira do JSON e no texto exibido ao usuário.
 4. **O estado é função pura da Data Juliana.** Nada de integração acumulativa. É essa
-   propriedade que entrega de graça o tempo reverso, o salto para uma data arbitrária e o
+  propriedade que entrega de graça o tempo reverso, o salto para uma data arbitrária e o
    save/load trivial: salvar o mundo inteiro é salvar um `double`.
+
+
 
 ### Convenção de unidades
 
-| Grandeza | Unidade | Observação |
-| --- | --- | --- |
-| Distância | km | |
-| Tempo (física) | segundos | |
-| Tempo (calendário) | Data Juliana em dias | Época J2000.0 = 2451545.0 |
-| Ângulos | radianos | Convertidos de graus na carga do JSON |
-| Parâmetro gravitacional | km³/s² | Mesma unidade em que o JPL publica GM |
+
+| Grandeza                | Unidade              | Observação                            |
+| ----------------------- | -------------------- | ------------------------------------- |
+| Distância               | km                   |                                       |
+| Tempo (física)          | segundos             |                                       |
+| Tempo (calendário)      | Data Juliana em dias | Época J2000.0 = 2451545.0             |
+| Ângulos                 | radianos             | Convertidos de graus na carga do JSON |
+| Parâmetro gravitacional | km³/s²               | Mesma unidade em que o JPL publica GM |
+
 
 A escolha de km e segundos alinha o projeto com a literatura de astrodinâmica e com as
 tabelas do JPL, evitando uma camada de conversão no dia em que as transferências orbitais
@@ -50,6 +56,8 @@ entrarem. O custo é converter `Δt` de dias para segundos no propagador, o que 
 multiplicação por 86400 em um único ponto do código.
 
 ---
+
+
 
 ## Arquitetura em camadas
 
@@ -80,6 +88,10 @@ graph TD
     Sim --> Repo
 ```
 
+
+
+
+
 ### Por que a camada Bridge existe
 
 O diagrama da especificação previa uma camada de adaptação, mas a estrutura inicial de
@@ -87,7 +99,7 @@ pastas tinha apenas `Engine/`, `Render/` e `UI/`. Sem um lugar próprio, duas
 responsabilidades escorregam para dentro de `Render/`:
 
 - a conversão `double` para `float` relativa à câmera, que é o único ponto onde a precisão
-  do sistema pode ser destruída;
+do sistema pode ser destruída;
 - o mapeamento de escala linear e logarítmico.
 
 Espalhadas por vários nós gráficos, essas duas regras acabam duplicadas e divergentes, e
@@ -100,6 +112,8 @@ igual a um.
 
 ---
 
+
+
 ## Estado do ambiente
 
 Instalado e verificado: **.NET SDK 10.0.302** e **Godot 4.7.1 (variante .NET)**. A solução
@@ -111,15 +125,21 @@ independentemente do alvo.
 
 ---
 
+
+
 ## M0 — Ambiente e esqueleto compilável
 
 Objetivo: sair do zero absoluto para um projeto que compila, abre no Godot e roda testes.
 
 - [x] .NET SDK 10.0.302 instalado e verificado com `dotnet --info`
 - [x] Godot 4.7.1 na variante .NET (o pacote se chama `GodotEngine.GodotEngine.Mono`;
-      o nome "Mono" é histórico e não indica o runtime antigo)
+  ```
+  o nome "Mono" é histórico e não indica o runtime antigo)
+  ```
 - [x] `solar-sim-godot.csproj` com `Godot.NET.Sdk/4.7.1`, `EnableDynamicLoading` e
-      `Nullable`, excluindo `Engine/**` e `Tests/**` dos globs de compilação
+  ```
+  `Nullable`, excluindo `Engine/**` e `Tests/**` dos globs de compilação
+  ```
 - [x] `project.godot` com `config_version=5` e cena principal apontando para `Main.tscn`
 - [x] Cenas mínimas válidas em `Scenes/`, sem as quais o projeto não abre
 - [x] `Engine/SolarSim.Engine.csproj` como biblioteca separada
@@ -128,7 +148,11 @@ Objetivo: sair do zero absoluto para um projeto que compila, abre no Godot e rod
 - [x] Teste-guardião do invariante 1 em `Tests/ArchitectureTests.cs`
 - [x] `.gdignore` em `Engine/` e `Tests/`, para o Godot não tratá-los como pastas de script
 - [x] Regras do projeto em `.cursor/rules/`, `AGENTS.md`, `.gitignore`, `.gitattributes`,
-      `.editorconfig` e `README.md`
+  ```
+  `.editorconfig` e `README.md`
+  ```
+
+
 
 ### Decisão: o motor é um projeto separado
 
@@ -140,12 +164,14 @@ Com isso, o invariante 1 deixa de ser convenção e passa a ser garantido pelo c
 escrever `using Godot` em `Engine/` simplesmente não compila. O teste-guardião continua
 existindo para pegar o caso em que alguém adiciona a referência ao `.csproj` do motor.
 
-**Pronto quando:** ~~`dotnet build` passa, o Godot abre o projeto sem erro, e um teste
+**Pronto quando:** `dotnet build` ~~passa, o Godot abre o projeto sem erro, e um teste
 trivial roda com o editor fechado.~~ **Concluído:** build sem avisos, dois testes
 passando, e `--headless --import` seguido de execução da cena principal com código de
 saída 0.
 
 ---
+
+
 
 ## M1 — Fatia vertical: a Terra na tela
 
@@ -156,14 +182,22 @@ profundidade. Tudo aqui é intencionalmente mínimo.
 Corte mínimo por camada:
 
 - [x] `Engine/Core/AstroConstants.cs` — J2000, GM do Sol e da Terra, UA, normalização
-      de ângulo
+  ```
+  de ângulo
+  ```
 - [x] `Engine/Models/Vector3D.cs` — `readonly record struct` com operadores, produto
-      escalar e vetorial
+  ```
+  escalar e vetorial
+  ```
 - [x] `Engine/Models/OrbitalElements.cs` — os seis elementos, com fábrica que aceita UA
-      e graus, que é como as tabelas de efemérides publicam
+  ```
+  e graus, que é como as tabelas de efemérides publicam
+  ```
 - [x] `Engine/Models/SystemStateSnapshot.cs` — `BodyState` e o snapshot publicado
 - [x] `Engine/Core/TimeEngine.cs` — UTC para JD e de volta, acúmulo por delta e
-      multiplicador, pausa, tempo reverso
+  ```
+  multiplicador, pausa, tempo reverso
+  ```
 - [x] `Engine/Core/KeplerPropagator.cs` — caso elíptico com Newton-Raphson e `atan2`
 - [x] `Engine/Data/IBodyRepository.cs` + `HardcodedBodyRepository` com Sol e Terra
 - [x] `Engine/SimEngine.cs` — lista plana, snapshot reaproveitado e evento
@@ -182,15 +216,15 @@ adiar a discussão de schema do JSON até o M3 sem criar dívida: quando o
 ### Desvios em relação ao plano original
 
 - **Conversão JD para UTC entrou antecipada.** O plano deixava a inversa para depois, mas
-  sem ela não há como mostrar a data na tela, e a data é justamente como se confere que a
-  Terra completou uma volta.
-- **A árvore de nós é montada em código, não em `.tscn`.** Como a decisão entre 2D e 3D só
-  aconteceria no M6, construir os nós em código evitava refazer arquivos de cena.
-  `Main.tscn` tem um nó só, com o `SimBridge`. A aposta se pagou: a migração para 3D no M6
-  não teve nenhuma cena para reconstruir, e o stub `Scenes/Prefabs/CelestialBody.tscn`, que
-  nunca chegou a ser usado, foi removido lá.
-- **`ImplicitUsings` precisou ser ligado** no projeto do Godot; o `Godot.NET.Sdk` não o
-  habilita por padrão, ao contrário dos outros dois projetos.
+sem ela não há como mostrar a data na tela, e a data é justamente como se confere que a
+Terra completou uma volta.
+- **A árvore de nós é montada em código, não em** `.tscn`**.** Como a decisão entre 2D e 3D só
+aconteceria no M6, construir os nós em código evitava refazer arquivos de cena.
+`Main.tscn` tem um nó só, com o `SimBridge`. A aposta se pagou: a migração para 3D no M6
+não teve nenhuma cena para reconstruir, e o stub `Scenes/Prefabs/CelestialBody.tscn`, que
+nunca chegou a ser usado, foi removido lá.
+- `ImplicitUsings` **precisou ser ligado** no projeto do Godot; o `Godot.NET.Sdk` não o
+habilita por padrão, ao contrário dos outros dois projetos.
 
 **Pronto quando:** ~~a Terra descreve uma volta completa em torno do Sol na tela, com
 play/pause funcionando e velocidade temporal ajustável.~~ **Concluído:** build sem avisos,
@@ -200,35 +234,47 @@ após um período.
 
 ---
 
+
+
 ## M2 — Rigor numérico
 
 Objetivo: transformar "parece certo" em "está comprovadamente certo". A partir daqui o
 motor é confiável o suficiente para construir em cima.
 
 - [x] Newton-Raphson com tolerância `1e-12`, teto de iterações e chute inicial adaptado
-      para excentricidade alta (`E₀ = π` quando `e > 0.8`) — já entregue no M1
+  ```
+  para excentricidade alta (`E₀ = π` quando `e > 0.8`) — já entregue no M1
+  ```
 - [x] Normalizar a anomalia média para `[0, 2π)` antes de resolver — já no M1
 - [x] Anomalia verdadeira por `atan2` — já no M1
 - [x] Vetor velocidade, com `StateVector` preenchido (antecipado do M7)
 - [x] Rotação completa `Rz(-Ω)·Rx(-i)·Rz(-ω)`, generalizada para aceitar qualquer vetor
-      do plano orbital, e não apenas raio e anomalia
+  ```
+  do plano orbital, e não apenas raio e anomalia
+  ```
 - [x] Marte acrescentado ao repositório, necessário para a comparação de referência
 - [x] Contagem de iterações exposta pelo solver, para o critério ser verificado
 - [x] `SimEngine.StateAt`, `ElementsOf` e `GravitationalParameterOf` para consulta de estado
 - [x] Testes de invariantes: energia orbital específica, momento angular e a relação
-      entre energia e semi-eixo maior
+  ```
+  entre energia e semi-eixo maior
+  ```
 - [x] Regressão contra efemérides geométricas do JPL Horizons (solução DE441)
+
+
 
 ### Resultado da validação
 
 Comparação com o JPL Horizons para o baricentro Terra-Lua e o de Marte, em 2000-01-01,
 2013-01-01 e 2026-01-01, referencial eclíptico J2000 centrado no Sol:
 
-| Grandeza | Erro máximo observado | Critério |
-| --- | --- | --- |
-| Distância radial | 0,0132% | 0,1% |
-| Direção do vetor posição | 0,0928° | — |
-| Velocidade | 0,0120% | — |
+
+| Grandeza                 | Erro máximo observado | Critério |
+| ------------------------ | --------------------- | -------- |
+| Distância radial         | 0,0132%               | 0,1%     |
+| Direção do vetor posição | 0,0928°               | —        |
+| Velocidade               | 0,0120%               | —        |
+
 
 O erro cresce com a distância à época, como esperado de um modelo de elementos fixos: a
 Terra sai de 0,0003% em J2000 para 0,0041% em 2026. O pior caso é sempre Marte em 2026.
@@ -241,7 +287,7 @@ ordem de grandeza.
 
 **Pronto quando:** ~~posições de Terra e Marte conferem com o JPL Horizons em três datas
 distintas, com erro relativo abaixo de 0,1% na distância radial, e o solver converge em
-menos de dez iterações para todo `e < 0.95`.~~ **Concluído:** erro radial máximo de
+menos de dez iterações para todo~~ `e < 0.95`~~.~~ **Concluído:** erro radial máximo de
 0,0132%, sete vezes melhor que o critério. A convergência em menos de dez iterações é
 verificada para `e` de 0 a 0,94, varrendo 720 valores de anomalia média em cada
 excentricidade. 41 testes passando.
@@ -251,20 +297,30 @@ M2; a diferença veio do parâmetro gravitacional efetivo adotado no M3.
 
 ---
 
+
+
 ## M3 — Sistema completo e hierarquia
 
 Objetivo: sair de dois corpos hardcoded para o Sistema Solar real, com luas.
 
 - [x] Definir o schema de `Data/solar_system_j2000.json`, com unidades explícitas no
-      próprio arquivo
+  ```
+  próprio arquivo
+  ```
 - [x] Popular Sol, oito planetas, Lua, galileanas e Titã
 - [x] `Engine/Data/DataLoader.cs` e `JsonBodyRepository` implementando `IBodyRepository`,
-      convertendo graus para radianos na carga
+  ```
+  convertendo graus para radianos na carga
+  ```
 - [x] Validação na carga: corpo pai inexistente, ciclo na hierarquia, `a <= 0`, campos
-      ausentes — com mensagem de erro que diga qual corpo e qual campo
+  ```
+  ausentes — com mensagem de erro que diga qual corpo e qual campo
+  ```
 - [x] Ordem de avaliação garantindo pai antes de filho
 - [x] Composição recursiva `P_global(A) = P_global(Pai(A)) + P_local(A)`
 - [x] Remover a implementação hardcoded
+
+
 
 ### O schema
 
@@ -277,12 +333,12 @@ motor lê e ignora — existem para quem abre o arquivo.
 
 ### Decisões e desvios
 
-**O parâmetro gravitacional passou a ser o efetivo, `mu(pai) + mu(corpo)`.** É a forma
+**O parâmetro gravitacional passou a ser o efetivo,** `mu(pai) + mu(corpo)`**.** É a forma
 correta da equação do movimento relativo de dois corpos. Para um planeta em torno do Sol a
 correção é imperceptível; para a Lua vale 1,2% e é a diferença entre um mês sideral de
 27,45 e um de 27,32 dias. O efeito colateral foi melhorar de leve os números do M2.
 
-**A hierarquia virou um objeto próprio, `BodyHierarchy`.** A validação de pai inexistente,
+**A hierarquia virou um objeto próprio,** `BodyHierarchy`**.** A validação de pai inexistente,
 ciclo e raiz única não é específica do JSON: vale para qualquer implementação de
 `IBodyRepository`. Ficando separada, o `DataLoader` a aplica na carga e o `SimEngine` a
 aplica sobre o que quer que receba, com uma implementação só.
@@ -311,21 +367,33 @@ passando, sendo 39 novos.
 
 ---
 
+
+
 ## M4 — Escalas e navegação
 
 Objetivo: tornar o Sistema Solar navegável, que é o problema visual central — em escala
 real, os planetas são invisíveis.
 
 - [x] Modo logarítmico perceptual:
-      `r_vis = ln(1 + α·r) / ln(1 + α·r_max) · R_tela`
+  ```
+  `r_vis = ln(1 + α·r) / ln(1 + α·r_max) · R_tela`
+  ```
 - [x] Escala independente para o raio dos corpos, desacoplada da escala de distância
 - [x] Transição suave entre os modos linear e logarítmico
 - [x] `Render/SpaceCamera.cs` completo: zoom exponencial, pan, ancoragem em um corpo,
-      transição suave ao trocar de alvo
+  ```
+  transição suave ao trocar de alvo
+  ```
 - [x] `Render/OrbitLineRenderer.cs`: amostragem de um período completo via propagador,
-      com cache invalidado apenas por mudança de escala ou de câmera
+  ```
+  com cache invalidado apenas por mudança de escala ou de câmera
+  ```
 - [x] `Render/BodyLabels.cs` — fora do plano original, pedido depois de rodar: sem os
-      nomes, quinze pontos coloridos não dizem qual é qual
+  ```
+  nomes, quinze pontos coloridos não dizem qual é qual
+  ```
+
+
 
 ### Decisões e desvios
 
@@ -370,21 +438,31 @@ centésimo de pixel sobre a posição projetada dele ainda sobrevive à convers�
 
 ---
 
+
+
 ## M5 — Interface
 
 - [x] `UI/TimeControls.cs` — play/pause, multiplicador (1x, 1000x, 100000x, 10⁷x), data
-      legível, entrada de data arbitrária, retorno a J2000, tempo reverso
+  ```
+  legível, entrada de data arbitrária, retorno a J2000, tempo reverso
+  ```
 - [x] `UI/SystemTree.cs` — árvore hierárquica navegável; selecionar ancora a câmera
 - [x] `UI/InspectorPanel.cs` — elementos orbitais, distância ao pai e ao Sol, velocidade
-      instantânea, período, dados físicos
+  ```
+  instantânea, período, dados físicos
+  ```
 - [x] `Bridge/BodyReport.cs` — o retrato consultado ao motor que alimenta o inspetor
 - [x] `Bridge/DisplayFormat.cs` — número do domínio em texto, com escolha de unidade
 - [x] `UI/Panels.cs` — fora do plano original: a caixa, os rótulos e os botões comuns aos
-      três painéis
+  ```
+  três painéis
+  ```
+
+
 
 ### Decisões e desvios
 
-**A UI conversa com um `SimBridge` de fachada, e não com o motor.** O `SimBridge` deixou
+**A UI conversa com um** `SimBridge` **de fachada, e não com o motor.** O `SimBridge` deixou
 de expor a propriedade `Sim` e passou a oferecer os comandos e as consultas que a
 interface precisa — pausar, mudar a velocidade, inverter o tempo, saltar para uma data,
 ancorar, pedir o retrato de um corpo. Com `Sim` público, cada painel novo teria a
@@ -455,6 +533,8 @@ alcançável a partir de `UI/`.
 
 ---
 
+
+
 ## M6 — Ponto de decisão 2D/3D — **Concluído**
 
 Marco de reavaliação explícito, não de implementação. Até aqui, `Render/` era um andaime 2D
@@ -463,6 +543,8 @@ declaradamente descartável.
 - [x] Decidir entre manter 2D ou migrar para Node3D, agora com o sistema real em mãos
 - [x] Se migrar: câmera orbital em três eixos, profundidade
 - [x] ~~iluminação~~ — recusada; a justificativa está abaixo
+
+
 
 ### A decisão: migrar, com câmera ortográfica
 
@@ -516,6 +598,8 @@ justificativa.~~ **Concluído:** decisão registrada acima, migração feita, bu
 
 ---
 
+
+
 ## M7 — Fundações para missões
 
 Objetivo: as capacidades que transformam o simulador em base para transferências orbitais
@@ -523,15 +607,23 @@ e missões. Estão aqui, e não no backlog, porque algumas delas influenciam o d
 estruturas desde o M1.
 
 - [x] `Engine/Models/StateVector.cs` — posição e velocidade como tipo de primeira classe,
-      com energia específica e momento angular (antecipado no M2)
+  ```
+  com energia específica e momento angular (antecipado no M2)
+  ```
 - [x] Conversão `OrbitalElements` para `StateVector` via `KeplerPropagator.StateAt`
 - [ ] Conversão inversa `StateVector` para `OrbitalElements` — o problema inverso, que é o
-      que permite criar um corpo a partir de posição e velocidade arbitrárias, e portanto
-      o que permite existir uma nave
+  ```
+  que permite criar um corpo a partir de posição e velocidade arbitrárias, e portanto
+  o que permite existir uma nave
+  ```
 - [ ] Órbitas com `e >= 1`: hiperbólicas e parabólicas. Toda transferência e todo sobrevoo
-      passam por trajetórias abertas, então isso deixa de ser caso exótico
+  ```
+  passam por trajetórias abertas, então isso deixa de ser caso exótico
+  ```
 - [ ] Avaliar a formulação por variáveis universais, que trata todas as cônicas com um
-      único solver, em lugar de ramificar por tipo de órbita
+  ```
+  único solver, em lugar de ramificar por tipo de órbita
+  ```
 - [ ] Registro dinâmico de corpos em runtime, com adição e remoção fora do JSON
 - [ ] Esfera de influência e reatribuição de corpo pai (cônicas emendadas)
 - [ ] Save/load, que graças ao invariante 4 é serializar `JD` mais os corpos dinâmicos
@@ -540,6 +632,8 @@ estruturas desde o M1.
 arbitrário, e ele é propagado corretamente junto com o resto do sistema.
 
 ---
+
+
 
 ## Estrutura de arquivos alvo
 
@@ -610,12 +704,14 @@ solar-sim-godot/
 
 ---
 
+
+
 ## Backlog
 
 Fora do escopo dos oito marcos, em ordem aproximada de valor:
 
 - Elementos orbitais variáveis no tempo (taxas seculares), que melhoram bastante a
-  precisão de longo prazo por um custo baixo
+precisão de longo prazo por um custo baixo
 - Perturbações gravitacionais de terceiro corpo
 - Precisão de nível VSOP87 ou DE440
 - Integração numérica de N-corpos como modo alternativo ao analítico
@@ -623,9 +719,12 @@ Fora do escopo dos oito marcos, em ordem aproximada de valor:
 - Rotação axial, obliquidade e fases de iluminação
 - Janelas de transferência e planejamento de manobras
 - Constelações como pano de fundo, o que exige um catálogo de estrelas e a projeção da
-  esfera celeste
+esfera celeste
+- HUD de ensino/explicações ou análises.
 
 ---
+
+
 
 ## Ordem de dependência
 
@@ -641,6 +740,8 @@ graph LR
     M2 --> M7[M7 Missoes]
     M6 --> M7
 ```
+
+
 
 M2 e M3 podem avançar em paralelo depois do M1, desde que o M3 não seja dado como pronto
 antes do M2 — validar hierarquia sobre um propagador não verificado apenas mascara de
