@@ -1,15 +1,17 @@
 using Godot;
 using SolarSim.Bridge;
+using SolarSim.Engine.Models;
 
 namespace SolarSim.UI;
 
 /// <summary>
-/// Ficha do corpo ancorado: dados físicos, geometria da órbita e o estado instantâneo.
+/// Ficha do corpo ancorado: dados físicos, geometria da órbita, estado instantâneo e
+/// ambiente (M11). Passar o mouse no rótulo mostra o glossário do termo.
 /// </summary>
 /// <remarks>
-/// Todo valor sai de <see cref="SimBridge.ReportFor"/>, montado por consulta ao motor no
-/// momento da atualização. O painel não guarda nada além dos rótulos onde escreve, então
-/// não existe estado aqui que possa divergir da simulação.
+/// Todo valor sai de <see cref="SimBridge.ReportFor"/> / <see cref="SimBridge.EnvironmentFor"/>,
+/// montado por consulta ao motor no momento da atualização. O painel não guarda nada além
+/// dos rótulos onde escreve.
 /// </remarks>
 public partial class InspectorPanel : CanvasLayer
 {
@@ -47,9 +49,59 @@ public partial class InspectorPanel : CanvasLayer
         TrueAnomaly,
         Periapsis,
         Apoapsis,
+        SphereOfInfluence,
+        SurfaceTemperature,
+        EquilibriumTemperature,
+        SurfacePressure,
+        Radiation,
+        LiquidWater,
+        HabitabilityIndex,
     }
 
     private static readonly int RowCount = Enum.GetValues<Row>().Length;
+
+    /// <summary>Glossário curto ao passar o mouse no rótulo da linha.</summary>
+    private static readonly Dictionary<Row, string> Glossary = new()
+    {
+        [Row.Orbits] =
+            "Corpo em torno do qual este orbita (o atrator atual). Em sondas, pode mudar ao cruzar uma esfera de influência.",
+        [Row.Radius] = "Raio médio do corpo, em quilômetros.",
+        [Row.GravitationalParameter] =
+            "GM: constante gravitacional vezes a massa. Define a força com que o corpo atrai satélites.",
+        [Row.DistanceToParent] = "Distância instantânea até o corpo pai.",
+        [Row.DistanceToRoot] = "Distância instantânea até a raiz do sistema (em geral o Sol).",
+        [Row.SpeedRelativeToParent] = "Velocidade relativa ao pai — a que a órbita kepleriana descreve.",
+        [Row.SpeedRelativeToRoot] = "Velocidade relativa à raiz do sistema (heliocêntrica, se a raiz for o Sol).",
+        [Row.Period] = "Tempo para completar uma volta na órbita fechada. Infinito em hipérbole.",
+        [Row.SemiMajorAxis] =
+            "Semi-eixo maior: metade do eixo longo da elipse (ou parâmetro equivalente na hipérbole).",
+        [Row.Eccentricity] =
+            "Excentricidade: 0 = círculo; entre 0 e 1 = elipse; > 1 = hipérbole (fuga).",
+        [Row.Inclination] = "Inclinação do plano da órbita em relação ao plano de referência (eclíptica).",
+        [Row.AscendingNode] =
+            "Longitude do nó ascendente (Ω): onde a órbita cruza o plano de referência subindo.",
+        [Row.ArgumentOfPeriapsis] =
+            "Argumento do periápside (ω): ângulo do nó ascendente até o ponto mais próximo do foco.",
+        [Row.MeanAnomalyAtEpoch] =
+            "Anomalia média em J2000: posição angular média na época de referência.",
+        [Row.TrueAnomaly] =
+            "Anomalia verdadeira: ângulo atual entre o periápside e a posição do corpo, no foco.",
+        [Row.Periapsis] = "Distância mínima ao atrator (periélio se o atrator for o Sol).",
+        [Row.Apoapsis] = "Distância máxima ao atrator. Não existe em órbita aberta.",
+        [Row.SphereOfInfluence] =
+            "Raio aproximado em que este corpo domina a atração sobre uma sonda (cônicas emendadas).",
+        [Row.SurfaceTemperature] =
+            "Temperatura de superfície estimada (equilíbrio radiativo + estufa paramétrica).",
+        [Row.EquilibriumTemperature] =
+            "Temperatura de equilíbrio sem estufa: só albedo e fluxo estelar.",
+        [Row.SurfacePressure] = "Pressão atmosférica na superfície (perfil ambiental).",
+        [Row.Radiation] =
+            "Dose ionizante relativa à Terra em 1 UA com campo terrestre (= 1×).",
+        [Row.LiquidWater] =
+            "Água líquida na superfície, oceano sob gelo, ou nenhuma — no modelo de ensino.",
+        [Row.HabitabilityIndex] =
+            "BHI (0–1): índice de habitabilidade básica (temperatura, pressão, radiação, água).",
+    };
 
     public void Attach(SimBridge bridge)
     {
@@ -73,10 +125,21 @@ public partial class InspectorPanel : CanvasLayer
         for (var row = 0; row < RowCount; row++)
         {
             _captions[row] = Panels.Caption(string.Empty);
+            // Caption ignora o mouse por padrão; o glossário precisa receber hover.
+            _captions[row].MouseFilter = Control.MouseFilterEnum.Stop;
+            if (Glossary.TryGetValue((Row)row, out var tip))
+            {
+                _captions[row].TooltipText = tip;
+            }
 
             _values[row] = Panels.Value(Absent);
             _values[row].HorizontalAlignment = HorizontalAlignment.Right;
             _values[row].SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            _values[row].MouseFilter = Control.MouseFilterEnum.Stop;
+            if (Glossary.TryGetValue((Row)row, out tip))
+            {
+                _values[row].TooltipText = tip;
+            }
 
             grid.AddChild(_captions[row]);
             grid.AddChild(_values[row]);
@@ -114,10 +177,10 @@ public partial class InspectorPanel : CanvasLayer
             return;
         }
 
-        Show(_bridge.ReportFor(bodyId));
+        Show(_bridge.ReportFor(bodyId), _bridge.EnvironmentFor(bodyId));
     }
 
-    private void Show(in BodyReport report)
+    private void Show(in BodyReport report, in EnvironmentReport environment)
     {
         _title.Text = report.Name;
 
@@ -131,24 +194,20 @@ public partial class InspectorPanel : CanvasLayer
         var elements = report.Elements.GetValueOrDefault();
         var isRoot = report.IsRoot;
 
-        // A raiz não orbita nada: as linhas de órbita continuam rotuladas, com traço no
-        // lugar do número. Escondê-las faria o painel mudar de altura ao trocar de corpo.
         string OrbitOnly(string value) => isRoot ? Absent : value;
 
-        // Um planeta orbita a própria raiz, e aí as duas medidas são a mesma. Mostrar as
-        // duas linhas repetiria o número e daria a impressão de defeito; elas só têm o que
-        // dizer para um satélite, cujo movimento em torno do planeta é o assunto.
         var hasOwnParent = !isRoot && parent != report.RootName;
 
-        Set(Row.Orbits, "Orbita", report.ParentName ?? Absent);
+        Set(
+            Row.Orbits,
+            report.IsDynamic ? "Orbita agora" : "Orbita",
+            report.ParentName ?? Absent);
         Set(Row.Radius, "Raio", DisplayFormat.Distance(report.RadiusKm));
         Set(
             Row.GravitationalParameter,
             "GM",
             DisplayFormat.GravitationalParameter(report.MuKm3S2));
 
-        // O nome entre parênteses em vez de regido por preposição: "ao Sol" e "a Júpiter"
-        // exigiriam saber o artigo de cada corpo, e o arquivo de dados não o traz.
         Show(Row.DistanceToParent, hasOwnParent);
         Set(
             Row.DistanceToParent,
@@ -208,7 +267,53 @@ public partial class InspectorPanel : CanvasLayer
             Row.Apoapsis,
             "Apoápside",
             OrbitOnly(DisplayFormat.Distance(report.ApoapsisKm)));
+
+        Show(
+            Row.SphereOfInfluence,
+            report.SphereOfInfluenceKm > 0.0 && double.IsFinite(report.SphereOfInfluenceKm));
+        Set(
+            Row.SphereOfInfluence,
+            "Esfera de influência",
+            DisplayFormat.Distance(report.SphereOfInfluenceKm));
+
+        var showEnvironment = !isRoot;
+        Show(Row.SurfaceTemperature, showEnvironment);
+        Show(Row.EquilibriumTemperature, showEnvironment);
+        Show(Row.SurfacePressure, showEnvironment);
+        Show(Row.Radiation, showEnvironment);
+        Show(Row.LiquidWater, showEnvironment);
+        Show(Row.HabitabilityIndex, showEnvironment);
+
+        Set(
+            Row.SurfaceTemperature,
+            "T superfície",
+            DisplayFormat.Temperature(environment.SurfaceTemperatureK));
+        Set(
+            Row.EquilibriumTemperature,
+            "T equilíbrio",
+            DisplayFormat.Temperature(environment.EquilibriumTemperatureK));
+        Set(
+            Row.SurfacePressure,
+            "Pressão",
+            DisplayFormat.Pressure(environment.SurfacePressurePa));
+        Set(
+            Row.Radiation,
+            "Radiação",
+            DisplayFormat.RadiationRelative(environment.RelativeIonizingRadiation));
+        Set(Row.LiquidWater, "Água líquida", WaterLabel(environment.LiquidWater));
+        Set(
+            Row.HabitabilityIndex,
+            "BHI",
+            DisplayFormat.HabitabilityIndex(environment.HabitabilityIndex));
     }
+
+    private static string WaterLabel(LiquidWaterPresence water)
+        => water switch
+        {
+            LiquidWaterPresence.Surface => "superfície",
+            LiquidWaterPresence.Subsurface => "subterrânea",
+            _ => "não",
+        };
 
     private void ShowNothing()
     {

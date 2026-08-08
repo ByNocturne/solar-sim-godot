@@ -1,5 +1,6 @@
 using SolarSim.Bridge;
 using SolarSim.Engine.Core;
+using SolarSim.Engine.Models;
 
 namespace SolarSim.Tests;
 
@@ -113,6 +114,63 @@ public sealed class BodyReportTests
                 Assert.Equal(esperado, relatorio.DistanceToParentKm, esperado * 1e-9);
             }
         }
+    }
+
+    /// <summary>
+    /// A esfera de influência da Terra tem cerca de 925 mil km, e é o número que decide
+    /// quando uma sonda deixa de orbitar a Terra. Mostrá-lo no painel é o que torna a
+    /// emenda de cônicas previsível para quem está pilotando.
+    /// </summary>
+    [Fact]
+    public void EsferaDeInfluenciaAparecoNoRetratoDoPlaneta()
+    {
+        var sim = SolarSystem.NewEngine();
+
+        var terra = BodyReport.For(sim, "earth", AstroConstants.J2000);
+
+        Assert.Equal(925_000.0, terra.SphereOfInfluenceKm, 15_000.0);
+        Assert.False(terra.IsDynamic);
+    }
+
+    /// <summary>
+    /// Uma órbita aberta não tem volta a completar nem ponto mais distante. O retrato diz
+    /// isso com infinito, e cabe à formatação transformá-lo em traço na tela — inventar
+    /// um número finito aqui seria mentir com precisão.
+    /// </summary>
+    [Fact]
+    public void SondaEmFugaNaoTemPeriodoNemApoapside()
+    {
+        var sim = SolarSystem.NewEngine();
+        var julianDate = sim.Time.JulianDate;
+
+        const double raioKm = 6_778.0;
+        var escapeKmS = Math.Sqrt(2.0 * 398_600.435436 / raioKm);
+
+        sim.AddFromState(
+            new CelestialBodyData
+            {
+                Id = "sonda",
+                Name = "Sonda",
+                ParentId = "earth",
+                MuKm3S2 = 0.0,
+                RadiusKm = 0.0,
+                ColorRgb = 0xFFFFFF,
+            },
+            new StateVector(
+                new Vector3D(raioKm, 0.0, 0.0),
+                new Vector3D(0.0, escapeKmS * 1.2, 0.0)),
+            julianDate);
+
+        var sonda = BodyReport.For(sim, "sonda", julianDate);
+
+        Assert.True(sonda.IsDynamic);
+        Assert.True(sonda.Elements!.Value.Eccentricity > 1.0);
+        Assert.Equal(double.PositiveInfinity, sonda.PeriodDays);
+        Assert.Equal(double.PositiveInfinity, sonda.ApoapsisKm);
+        Assert.Equal(raioKm, sonda.PeriapsisKm, 1e-6);
+
+        // Sem massa não há esfera: a sonda é atraída, e não atrai.
+        Assert.Equal(0.0, sonda.SphereOfInfluenceKm);
     }
 
     [Fact]

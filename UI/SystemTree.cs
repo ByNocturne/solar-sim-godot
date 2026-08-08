@@ -48,21 +48,19 @@ public partial class SystemTree : CanvasLayer
         _tree.AddThemeFontSizeOverride("font_size", Panels.FontSize);
         column.AddChild(_tree);
 
-        // A lista vem em ordem de avaliação, com o pai sempre antes do filho: quando um
-        // corpo é criado, o item do pai dele já existe.
-        foreach (var body in bridge.Bodies)
-        {
-            var parent = body.ParentId is { } parentId ? _itemById[parentId] : null;
-            var item = _tree.CreateItem(parent);
-
-            item.SetText(0, body.Name);
-            item.SetCustomColor(0, BodyPalette.Of(body.ColorRgb));
-            item.SetMetadata(0, body.Id);
-
-            _itemById[body.Id] = item;
-        }
+        BuildItems(bridge);
 
         _tree.ItemSelected += OnItemSelected;
+        bridge.StructureChanged += OnStructureChanged;
+    }
+
+    public override void _ExitTree()
+    {
+        if (_bridge is not null)
+        {
+            _bridge.StructureChanged -= OnStructureChanged;
+            _bridge = null;
+        }
     }
 
     public override void _Process(double delta)
@@ -86,6 +84,49 @@ public partial class SystemTree : CanvasLayer
         }
 
         _syncing = false;
+    }
+
+    /// <summary>
+    /// Remonta a árvore inteira. Uma sonda entrando, saindo ou trocando de pai muda o
+    /// lugar de um item, e o <c>Tree</c> do Godot não reparenta: refazer os itens é mais
+    /// simples do que perseguir o que mudou, e acontece só quando a estrutura muda.
+    /// </summary>
+    private void OnStructureChanged()
+    {
+        if (_bridge is null)
+        {
+            return;
+        }
+
+        _syncing = true;
+        _tree.Clear();
+        _itemById.Clear();
+
+        BuildItems(_bridge);
+
+        _syncing = false;
+
+        // Força o próximo quadro a reencontrar a âncora no item novo.
+        _shownAnchor = null;
+    }
+
+    /// <summary>
+    /// A lista vem em ordem de avaliação, com o pai sempre antes do filho: quando um
+    /// corpo é criado, o item do pai dele já existe.
+    /// </summary>
+    private void BuildItems(SimBridge bridge)
+    {
+        foreach (var body in bridge.Bodies)
+        {
+            var parent = body.ParentId is { } parentId ? _itemById[parentId] : null;
+            var item = _tree.CreateItem(parent);
+
+            item.SetText(0, body.Name);
+            item.SetCustomColor(0, BodyPalette.Of(body.ColorRgb));
+            item.SetMetadata(0, body.Id);
+
+            _itemById[body.Id] = item;
+        }
     }
 
     private void OnItemSelected()

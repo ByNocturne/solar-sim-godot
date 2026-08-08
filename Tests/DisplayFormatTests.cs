@@ -48,6 +48,42 @@ public sealed class DisplayFormatTests
     }
 
     /// <summary>
+    /// A órbita aberta não tem apoápside nem período, e o retrato diz isso com infinito.
+    /// Formatado como número, ele viraria "∞ UA" ou pior, "NaN": o traço é a forma de a
+    /// tela admitir que ali não há valor a mostrar.
+    /// </summary>
+    [Fact]
+    public void ValorQueNaoEFinitoSaiComoTraco()
+    {
+        Assert.Equal("—", DisplayFormat.Distance(double.PositiveInfinity));
+        Assert.Equal("—", DisplayFormat.Duration(double.PositiveInfinity));
+        Assert.Equal("—", DisplayFormat.Speed(double.NaN));
+        Assert.Equal("—", DisplayFormat.Angle(double.NaN));
+        Assert.Equal("—", DisplayFormat.Ratio(double.PositiveInfinity));
+        Assert.Equal("—", DisplayFormat.Temperature(double.NaN));
+        Assert.Equal("—", DisplayFormat.Pressure(double.PositiveInfinity));
+    }
+
+    [Fact]
+    public void Temperatura_pressao_e_bhi()
+    {
+        Assert.Equal("288,0 K", DisplayFormat.Temperature(288.0));
+        Assert.Equal("1,01 bar", DisplayFormat.Pressure(101_325.0));
+        Assert.Equal("610 Pa", DisplayFormat.Pressure(610.0));
+        Assert.Equal("0,92", DisplayFormat.HabitabilityIndex(0.92));
+    }
+
+    [Fact]
+    public void TeachingExplain_covers_earth_flags()
+    {
+        var (sim, env) = SolarSystem.NewEnvironment();
+        var report = env.ReportFor(sim, "earth");
+        var lines = TeachingExplain.LinesFor(report);
+        Assert.Contains(lines, l => l.Contains("BHI", StringComparison.Ordinal));
+        Assert.Contains(lines, l => l.Contains("água", StringComparison.Ordinal));
+    }
+
+    /// <summary>
     /// O painel precisa mostrar a mesma coisa na máquina de quem desenvolve e na de quem
     /// joga. Sem separadores próprios, um computador configurado em inglês trocaria a
     /// vírgula decimal por ponto e o número mudaria de significado por três ordens de

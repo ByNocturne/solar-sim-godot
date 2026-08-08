@@ -127,7 +127,7 @@ public sealed class DataLoaderTests
     }
 
     [Fact]
-    public void SemiEixoNaoPositivoFalha()
+    public void SemiEixoNuloFalha()
     {
         var erro = Assert.Throws<SystemDataException>(() => DataLoader.Parse(Documento($$"""
             {{Sol}},
@@ -214,7 +214,25 @@ public sealed class DataLoaderTests
     }
 
     [Fact]
-    public void OrbitaAbertaFalhaApontandoOMarcoQueAResolve()
+    public void OrbitaAbertaEAceitaComSemiEixoNegativo()
+    {
+        var corpos = DataLoader.Parse(Documento($$"""
+            {{Sol}},
+            { "id": "cometa", "name": "Cometa", "parent": "sun",
+              "muKm3S2": 1.0, "radiusKm": 1.0,
+              "orbit": { "semiMajorAxisAu": -1.0, "eccentricity": 1.2,
+                "inclinationDeg": 0.0, "longitudeOfAscendingNodeDeg": 0.0,
+                "argumentOfPeriapsisDeg": 0.0, "meanAnomalyAtEpochDeg": 0.0 } }
+            """));
+
+        var elementos = corpos.Single(corpo => corpo.Id == "cometa").Elements!.Value;
+
+        Assert.False(elementos.IsClosed);
+        Assert.True(elementos.PeriapsisKm > 0.0);
+    }
+
+    [Fact]
+    public void SinalDoSemiEixoIncompativelComAExcentricidadeFalha()
     {
         var erro = Assert.Throws<SystemDataException>(() => DataLoader.Parse(Documento($$"""
             {{Sol}},
@@ -225,7 +243,24 @@ public sealed class DataLoaderTests
                 "argumentOfPeriapsisDeg": 0.0, "meanAnomalyAtEpochDeg": 0.0 } }
             """)));
 
-        Assert.Contains("M7", erro.Message, StringComparison.Ordinal);
+        Assert.Contains("cometa", erro.Message, StringComparison.Ordinal);
+        Assert.Contains("negativo", erro.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void OrbitaParabolicaFalhaPorNaoSerRepresentavel()
+    {
+        var erro = Assert.Throws<SystemDataException>(() => DataLoader.Parse(Documento($$"""
+            {{Sol}},
+            { "id": "cometa", "name": "Cometa", "parent": "sun",
+              "muKm3S2": 1.0, "radiusKm": 1.0,
+              "orbit": { "semiMajorAxisAu": -1.0, "eccentricity": 1.0,
+                "inclinationDeg": 0.0, "longitudeOfAscendingNodeDeg": 0.0,
+                "argumentOfPeriapsisDeg": 0.0, "meanAnomalyAtEpochDeg": 0.0 } }
+            """)));
+
+        Assert.Contains("cometa", erro.Message, StringComparison.Ordinal);
+        Assert.Contains("parabólica", erro.Message, StringComparison.Ordinal);
     }
 
     [Fact]

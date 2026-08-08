@@ -19,6 +19,7 @@ public partial class OrbitLineRenderer : MeshInstance3D
 
     private Vector3D[] _samplesKm = [];
     private int _cachedRevision = -1;
+    private bool _isClosed = true;
     private SimBridge? _bridge;
 
     public string BodyId { get; set; } = string.Empty;
@@ -42,8 +43,21 @@ public partial class OrbitLineRenderer : MeshInstance3D
     public void Attach(SimBridge bridge)
     {
         _bridge = bridge;
-        _samplesKm = bridge.SampleOrbitKm(BodyId);
+        Resample(bridge);
         bridge.FrameReady += OnFrameReady;
+    }
+
+    /// <summary>
+    /// Recolhe a órbita de novo. Serve a quem trocou de pai ou de arco: os pontos em
+    /// cache descrevem a curva anterior, e nenhuma mudança de escala vai invalidá-los.
+    /// </summary>
+    public void Resample(SimBridge bridge)
+    {
+        ArgumentNullException.ThrowIfNull(bridge);
+
+        _samplesKm = bridge.SampleOrbitKm(BodyId);
+        _isClosed = bridge.HasClosedOrbit(BodyId);
+        _cachedRevision = -1;
     }
 
     public override void _ExitTree()
@@ -93,8 +107,11 @@ public partial class OrbitLineRenderer : MeshInstance3D
         }
 
         // Fecha o traço no primeiro ponto: a amostragem cobre um período, e sem isso
-        // sobra uma fresta na órbita.
-        _line.SurfaceAddVertex(bridge.OrbitSampleToPixels(_samplesKm[0], ParentBodyId));
+        // sobra uma fresta na órbita. A órbita aberta não fecha, porque ela não volta.
+        if (_isClosed)
+        {
+            _line.SurfaceAddVertex(bridge.OrbitSampleToPixels(_samplesKm[0], ParentBodyId));
+        }
 
         _line.SurfaceEnd();
     }

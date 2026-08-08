@@ -17,6 +17,15 @@ public readonly record struct StateVector(Vector3D PositionKm, Vector3D Velocity
     public static StateVector operator +(StateVector parent, StateVector local)
         => new(parent.PositionKm + local.PositionKm, parent.VelocityKmS + local.VelocityKmS);
 
+    /// <summary>
+    /// O caminho de volta: o estado de um corpo visto de outro. É o que a emenda de
+    /// cônicas mede no instante em que troca o corpo pai.
+    /// </summary>
+    public static StateVector operator -(StateVector state, StateVector reference)
+        => new(
+            state.PositionKm - reference.PositionKm,
+            state.VelocityKmS - reference.VelocityKmS);
+
     public double DistanceKm => PositionKm.Magnitude;
 
     public double SpeedKmS => VelocityKmS.Magnitude;

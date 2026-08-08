@@ -14,6 +14,13 @@ namespace SolarSim.Bridge;
 /// </remarks>
 public static class DisplayFormat
 {
+    /// <summary>
+    /// O que aparece no lugar de um número que não existe. É o caso do apoápside de uma
+    /// órbita aberta e do período de quem nunca volta: escrever "infinito" seria correto
+    /// e ilegível numa coluna de números.
+    /// </summary>
+    public const string Absent = "—";
+
     /// <summary>Um ano juliano, que é a unidade em que períodos longos se leem melhor.</summary>
     private const double DaysPerJulianYear = 365.25;
 
@@ -39,30 +46,26 @@ public static class DisplayFormat
     /// </summary>
     public static string Distance(double km)
         => Math.Abs(km) >= AstronomicalUnitThresholdKm
-            ? Format(km / AstroConstants.AstronomicalUnitKm, "N4") + " UA"
-            : Format(km, "N0") + " km";
+            ? Format(km / AstroConstants.AstronomicalUnitKm, "N4", " UA")
+            : Format(km, "N0", " km");
 
-    public static string Speed(double kmPerSecond) => Format(kmPerSecond, "N3") + " km/s";
+    public static string Speed(double kmPerSecond) => Format(kmPerSecond, "N3", " km/s");
 
     /// <summary>Duração em horas, dias ou anos, conforme a ordem de grandeza.</summary>
     public static string Duration(double days)
-    {
-        var magnitude = Math.Abs(days);
-
-        return magnitude switch
+        => Math.Abs(days) switch
         {
-            < 1.0 => Format(days * 24.0, "N2") + " h",
-            < 1000.0 => Format(days, "N2") + " d",
-            _ => Format(days / DaysPerJulianYear, "N2") + " anos",
+            < 1.0 => Format(days * 24.0, "N2", " h"),
+            < 1000.0 => Format(days, "N2", " d"),
+            _ => Format(days / DaysPerJulianYear, "N2", " anos"),
         };
-    }
 
     /// <summary>Ângulo em graus, que é como todo livro de astrodinâmica publica.</summary>
     public static string Angle(double radians)
-        => Format(AstroConstants.RadiansToDegrees(radians), "N3") + "°";
+        => Format(AstroConstants.RadiansToDegrees(radians), "N3", "°");
 
     public static string GravitationalParameter(double muKm3S2)
-        => Format(muKm3S2, "N0") + " km³/s²";
+        => Format(muKm3S2, "N0", " km³/s²");
 
     /// <summary>Grandeza adimensional, como a excentricidade.</summary>
     public static string Ratio(double value) => Format(value, "N4");
@@ -70,7 +73,7 @@ public static class DisplayFormat
     public static string JulianDate(double julianDate) => "JD " + Format(julianDate, "N3");
 
     /// <summary>Quantas vezes o tempo simulado corre mais rápido que o real.</summary>
-    public static string Multiplier(double multiplier) => Format(multiplier, "N0") + "x";
+    public static string Multiplier(double multiplier) => Format(multiplier, "N0", "x");
 
     /// <summary>
     /// Quanto tempo simulado passa por segundo real. É o número que diz alguma coisa: um
@@ -79,6 +82,35 @@ public static class DisplayFormat
     public static string TimeRate(double multiplier)
         => Duration(multiplier / AstroConstants.SecondsPerDay) + "/s";
 
-    private static string Format(double value, string format)
-        => value.ToString(format, Numbers);
+    public static string Temperature(double kelvin)
+        => Format(kelvin, "N1", " K");
+
+    public static string Pressure(double pascals)
+    {
+        if (!double.IsFinite(pascals))
+        {
+            return Absent;
+        }
+
+        if (Math.Abs(pascals) >= 1.0e4)
+        {
+            return Format(pascals / 1.0e5, "N2", " bar");
+        }
+
+        return Format(pascals, "N0", " Pa");
+    }
+
+    public static string HabitabilityIndex(double bhi)
+        => Format(Math.Clamp(bhi, 0.0, 1.0), "N2");
+
+    public static string RadiationRelative(double relative)
+        => Format(relative, "N2", "× Terra");
+
+    /// <summary>
+    /// Um número que não é finito não vira texto: vira traço. O apoápside de uma
+    /// hipérbole é infinito de verdade, e a alternativa seria a coluna exibir "∞" ou, pior,
+    /// "NaN".
+    /// </summary>
+    private static string Format(double value, string format, string unit = "")
+        => double.IsFinite(value) ? value.ToString(format, Numbers) + unit : Absent;
 }

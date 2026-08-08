@@ -17,7 +17,11 @@ internal static class Panels
     public const float Margin = 12.0f;
 
     /// <summary>Altura reservada pela barra de tempo no pé da tela.</summary>
-    public const float BottomBarHeight = 76.0f;
+    /// <remarks>
+    /// Três linhas (relógio, comandos, sonda/save) mais margens internas da caixa.
+    /// 108 px cortava a terceira linha na borda inferior.
+    /// </remarks>
+    public const float BottomBarHeight = 140.0f;
 
     public const float TreeWidth = 196.0f;
 

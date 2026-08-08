@@ -27,6 +27,7 @@
     <Compile Include="../Bridge/CameraRig.cs" Link="Bridge/CameraRig.cs" />
     <Compile Include="../Bridge/BodyReport.cs" Link="Bridge/BodyReport.cs" />
     <Compile Include="../Bridge/DisplayFormat.cs" Link="Bridge/DisplayFormat.cs" />
+    <Compile Include="../Bridge/TeachingExplain.cs" Link="Bridge/TeachingExplain.cs" />
   </ItemGroup>
 
   <ItemGroup>

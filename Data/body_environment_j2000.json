@@ -1,0 +1,247 @@
+{
+  "schemaVersion": 1,
+  "bodies": [
+    {
+      "bodyId": "sun",
+      "bondAlbedo": 0.0,
+      "rotationPeriodHours": 609.12,
+      "obliquityDeg": 7.25,
+      "metallicCoreFraction": 0.0,
+      "tidalLoveNumberK2": 0.0,
+      "tidalQualityFactor": 1.0e6,
+      "thermalInertiaJPerM2KSqrtS": 0.0,
+      "star": {
+        "effectiveTemperatureK": 5772.0,
+        "radiusKm": 695700.0
+      }
+    },
+    {
+      "bodyId": "mercury",
+      "bondAlbedo": 0.088,
+      "rotationPeriodHours": 1407.6,
+      "obliquityDeg": 0.034,
+      "metallicCoreFraction": 0.7,
+      "tidalLoveNumberK2": 0.0,
+      "tidalQualityFactor": 1.0e5,
+      "thermalInertiaJPerM2KSqrtS": 150.0
+    },
+    {
+      "bodyId": "venus",
+      "bondAlbedo": 0.77,
+      "rotationPeriodHours": 5832.5,
+      "obliquityDeg": 177.36,
+      "metallicCoreFraction": 0.15,
+      "tidalLoveNumberK2": 0.0,
+      "tidalQualityFactor": 1.0e5,
+      "thermalInertiaJPerM2KSqrtS": 2000.0,
+      "atmosphere": {
+        "surfacePressurePa": 9.2e6,
+        "moleFractionH2": 0.0,
+        "moleFractionHe": 0.0,
+        "moleFractionN2": 0.035,
+        "moleFractionO2": 0.0,
+        "moleFractionCO2": 0.965,
+        "moleFractionCH4": 0.0,
+        "moleFractionH2O": 0.0,
+        "moleFractionO3": 0.0
+      }
+    },
+    {
+      "bodyId": "earth",
+      "bondAlbedo": 0.306,
+      "rotationPeriodHours": 23.934,
+      "obliquityDeg": 23.44,
+      "metallicCoreFraction": 0.325,
+      "tidalLoveNumberK2": 0.3,
+      "tidalQualityFactor": 280.0,
+      "thermalInertiaJPerM2KSqrtS": 1500.0,
+      "atmosphere": {
+        "surfacePressurePa": 101325.0,
+        "moleFractionH2": 0.0,
+        "moleFractionHe": 0.0,
+        "moleFractionN2": 0.7808,
+        "moleFractionO2": 0.2095,
+        "moleFractionCO2": 0.0004,
+        "moleFractionCH4": 0.0000018,
+        "moleFractionH2O": 0.01,
+        "moleFractionO3": 0.0000007
+      }
+    },
+    {
+      "bodyId": "moon",
+      "bondAlbedo": 0.11,
+      "rotationPeriodHours": 655.72,
+      "obliquityDeg": 6.68,
+      "metallicCoreFraction": 0.02,
+      "tidalLoveNumberK2": 0.02,
+      "tidalQualityFactor": 30.0,
+      "thermalInertiaJPerM2KSqrtS": 50.0
+    },
+    {
+      "bodyId": "mars",
+      "bondAlbedo": 0.25,
+      "rotationPeriodHours": 24.623,
+      "obliquityDeg": 25.19,
+      "metallicCoreFraction": 0.2,
+      "tidalLoveNumberK2": 0.1,
+      "tidalQualityFactor": 80.0,
+      "thermalInertiaJPerM2KSqrtS": 200.0,
+      "atmosphere": {
+        "surfacePressurePa": 610.0,
+        "moleFractionH2": 0.0,
+        "moleFractionHe": 0.0,
+        "moleFractionN2": 0.027,
+        "moleFractionO2": 0.0013,
+        "moleFractionCO2": 0.953,
+        "moleFractionCH4": 0.0,
+        "moleFractionH2O": 0.0003,
+        "moleFractionO3": 0.0
+      }
+    },
+    {
+      "bodyId": "jupiter",
+      "bondAlbedo": 0.503,
+      "rotationPeriodHours": 9.925,
+      "obliquityDeg": 3.13,
+      "metallicCoreFraction": 0.05,
+      "tidalLoveNumberK2": 0.0,
+      "tidalQualityFactor": 1.0e5,
+      "thermalInertiaJPerM2KSqrtS": 5000.0,
+      "atmosphere": {
+        "surfacePressurePa": 1.0e5,
+        "moleFractionH2": 0.86,
+        "moleFractionHe": 0.13,
+        "moleFractionN2": 0.0,
+        "moleFractionO2": 0.0,
+        "moleFractionCO2": 0.0,
+        "moleFractionCH4": 0.002,
+        "moleFractionH2O": 0.0,
+        "moleFractionO3": 0.0
+      }
+    },
+    {
+      "bodyId": "io",
+      "bondAlbedo": 0.63,
+      "rotationPeriodHours": 42.46,
+      "obliquityDeg": 0.0,
+      "metallicCoreFraction": 0.2,
+      "tidalLoveNumberK2": 0.09,
+      "tidalQualityFactor": 36.0,
+      "thermalInertiaJPerM2KSqrtS": 100.0
+    },
+    {
+      "bodyId": "europa",
+      "bondAlbedo": 0.67,
+      "rotationPeriodHours": 85.23,
+      "obliquityDeg": 0.1,
+      "metallicCoreFraction": 0.1,
+      "tidalLoveNumberK2": 0.25,
+      "tidalQualityFactor": 100.0,
+      "thermalInertiaJPerM2KSqrtS": 80.0
+    },
+    {
+      "bodyId": "ganymede",
+      "bondAlbedo": 0.43,
+      "rotationPeriodHours": 171.7,
+      "obliquityDeg": 0.2,
+      "metallicCoreFraction": 0.15,
+      "tidalLoveNumberK2": 0.1,
+      "tidalQualityFactor": 100.0,
+      "thermalInertiaJPerM2KSqrtS": 100.0
+    },
+    {
+      "bodyId": "callisto",
+      "bondAlbedo": 0.22,
+      "rotationPeriodHours": 400.5,
+      "obliquityDeg": 0.2,
+      "metallicCoreFraction": 0.1,
+      "tidalLoveNumberK2": 0.05,
+      "tidalQualityFactor": 100.0,
+      "thermalInertiaJPerM2KSqrtS": 100.0
+    },
+    {
+      "bodyId": "saturn",
+      "bondAlbedo": 0.342,
+      "rotationPeriodHours": 10.55,
+      "obliquityDeg": 26.73,
+      "metallicCoreFraction": 0.05,
+      "tidalLoveNumberK2": 0.0,
+      "tidalQualityFactor": 1.0e5,
+      "thermalInertiaJPerM2KSqrtS": 5000.0,
+      "atmosphere": {
+        "surfacePressurePa": 1.0e5,
+        "moleFractionH2": 0.96,
+        "moleFractionHe": 0.03,
+        "moleFractionN2": 0.0,
+        "moleFractionO2": 0.0,
+        "moleFractionCO2": 0.0,
+        "moleFractionCH4": 0.004,
+        "moleFractionH2O": 0.0,
+        "moleFractionO3": 0.0
+      }
+    },
+    {
+      "bodyId": "titan",
+      "bondAlbedo": 0.22,
+      "rotationPeriodHours": 382.7,
+      "obliquityDeg": 0.0,
+      "metallicCoreFraction": 0.0,
+      "tidalLoveNumberK2": 0.1,
+      "tidalQualityFactor": 100.0,
+      "thermalInertiaJPerM2KSqrtS": 400.0,
+      "atmosphere": {
+        "surfacePressurePa": 146700.0,
+        "moleFractionH2": 0.001,
+        "moleFractionHe": 0.0,
+        "moleFractionN2": 0.98,
+        "moleFractionO2": 0.0,
+        "moleFractionCO2": 0.0,
+        "moleFractionCH4": 0.014,
+        "moleFractionH2O": 0.0,
+        "moleFractionO3": 0.0
+      }
+    },
+    {
+      "bodyId": "uranus",
+      "bondAlbedo": 0.3,
+      "rotationPeriodHours": 17.24,
+      "obliquityDeg": 97.77,
+      "metallicCoreFraction": 0.0,
+      "tidalLoveNumberK2": 0.0,
+      "tidalQualityFactor": 1.0e5,
+      "thermalInertiaJPerM2KSqrtS": 4000.0,
+      "atmosphere": {
+        "surfacePressurePa": 1.0e5,
+        "moleFractionH2": 0.83,
+        "moleFractionHe": 0.15,
+        "moleFractionN2": 0.0,
+        "moleFractionO2": 0.0,
+        "moleFractionCO2": 0.0,
+        "moleFractionCH4": 0.02,
+        "moleFractionH2O": 0.0,
+        "moleFractionO3": 0.0
+      }
+    },
+    {
+      "bodyId": "neptune",
+      "bondAlbedo": 0.29,
+      "rotationPeriodHours": 16.11,
+      "obliquityDeg": 28.32,
+      "metallicCoreFraction": 0.0,
+      "tidalLoveNumberK2": 0.0,
+      "tidalQualityFactor": 1.0e5,
+      "thermalInertiaJPerM2KSqrtS": 4000.0,
+      "atmosphere": {
+        "surfacePressurePa": 1.0e5,
+        "moleFractionH2": 0.8,
+        "moleFractionHe": 0.19,
+        "moleFractionN2": 0.0,
+        "moleFractionO2": 0.0,
+        "moleFractionCO2": 0.0,
+        "moleFractionCH4": 0.015,
+        "moleFractionH2O": 0.0,
+        "moleFractionO3": 0.0
+      }
+    }
+  ]
+}

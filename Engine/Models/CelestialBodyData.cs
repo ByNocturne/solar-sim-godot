@@ -4,7 +4,12 @@ namespace SolarSim.Engine.Models;
 /// Descrição estática de um corpo celeste. Imutável: nada aqui muda com o tempo,
 /// já que a posição é sempre derivada da Data Juliana.
 /// </summary>
-public sealed class CelestialBodyData
+/// <remarks>
+/// É um record para que a troca de pai de um corpo dinâmico, na emenda de cônicas, seja
+/// uma cópia com dois campos trocados, e não uma mutação: o que muda ali é a órbita
+/// vigente, não a identidade do corpo.
+/// </remarks>
+public sealed record CelestialBodyData
 {
     public required string Id { get; init; }
 

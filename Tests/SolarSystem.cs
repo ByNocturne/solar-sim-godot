@@ -15,9 +15,19 @@ internal static class SolarSystem
     // independentemente de onde o assembly for executado.
     public static string DataPath => Path.Combine(RepoRoot(), JsonBodyRepository.DefaultRelativePath);
 
+    public static string EnvironmentPath
+        => Path.Combine(RepoRoot(), EnvironmentLoader.DefaultRelativePath);
+
     public static string Json => File.ReadAllText(DataPath);
 
     public static SimEngine NewEngine() => new(JsonBodyRepository.FromFile(DataPath));
+
+    public static (SimEngine Sim, EnvironmentService Environment) NewEnvironment()
+    {
+        var sim = NewEngine();
+        var env = new EnvironmentService(EnvironmentLoader.FromFile(EnvironmentPath));
+        return (sim, env);
+    }
 
     private static string RepoRoot([CallerFilePath] string thisFile = "")
         => Path.GetFullPath(Path.Combine(Path.GetDirectoryName(thisFile)!, ".."));

@@ -167,13 +167,7 @@ public static class DataLoader
                 $"Corpo '{id}': 'orbit.eccentricity' não pode ser negativa.");
         }
 
-        if (eccentricity >= 1.0)
-        {
-            throw new SystemDataException(
-                $"Corpo '{id}': 'orbit.eccentricity' vale {eccentricity.ToString(CultureInfo.InvariantCulture)}, "
-                    + "que descreve uma trajetória aberta. O propagador atual só resolve "
-                    + "o caso elíptico; cônicas abertas entram no M7.");
-        }
+        RequireConicIsRepresentable(eccentricity, semiMajorAxisKm, id);
 
         return new OrbitalElements(
             semiMajorAxisKm,
@@ -207,13 +201,48 @@ public static class DataLoader
                     + "ambos preenchidos. Escolha uma unidade."),
         };
 
-        if (!double.IsFinite(semiMajorAxisKm) || semiMajorAxisKm <= 0.0)
+        if (!double.IsFinite(semiMajorAxisKm) || semiMajorAxisKm == 0.0)
         {
             throw new SystemDataException(
-                $"Corpo '{id}': o semi-eixo maior precisa ser um número positivo.");
+                $"Corpo '{id}': o semi-eixo maior precisa ser um número diferente de zero.");
         }
 
         return semiMajorAxisKm;
+    }
+
+    /// <summary>
+    /// O sinal do semi-eixo maior e o valor da excentricidade contam a mesma coisa, o
+    /// tipo de cônica, e precisam contar a mesma. A hipérbole tem semi-eixo negativo por
+    /// definição, e a parábola não tem semi-eixo nenhum.
+    /// </summary>
+    private static void RequireConicIsRepresentable(
+        double eccentricity,
+        double semiMajorAxisKm,
+        string id)
+    {
+        try
+        {
+            OrbitalElements.RequireRepresentableEccentricity(eccentricity);
+        }
+        catch (ArgumentOutOfRangeException erro)
+        {
+            throw new SystemDataException($"Corpo '{id}': {erro.Message}", erro);
+        }
+
+        var closed = eccentricity < 1.0;
+
+        if (closed != semiMajorAxisKm > 0.0)
+        {
+            var esperado = closed ? "positivo" : "negativo";
+
+            throw new SystemDataException(
+                $"Corpo '{id}': excentricidade "
+                    + $"{eccentricity.ToString(CultureInfo.InvariantCulture)} pede semi-eixo "
+                    + $"maior {esperado}, e o declarado é "
+                    + $"{semiMajorAxisKm.ToString(CultureInfo.InvariantCulture)} km. Na "
+                    + "hipérbole o semi-eixo é negativo, e é o sinal dele que diz de que "
+                    + "lado do foco fica o centro da cônica.");
+        }
     }
 
     private static double RequireFinite(double? value, string id, string field)
