@@ -13,8 +13,7 @@ apresentação tem escala hierárquica com modo logarítmico e linear, câmera a
 desenho de órbitas, com árvore do sistema, barra de tempo e inspetor de corpo. O próximo
 passo é o M6, a decisão entre 2D e 3D, descrito no [ROADMAP.md](ROADMAP.md).
 
-Para ver rodando: abra o projeto no Godot e pressione F5, ou
-`godot --path . --resolution 1152x648`. Espaço pausa, setas ajustam a velocidade, R volta
+Para ver rodando: abra o projeto no Godot e pressione F5, ou `godot --path .`. Espaço pausa, setas ajustam a velocidade, R volta
 para J2000, Tab e Shift+Tab ancoram a câmera no corpo seguinte e no anterior, um clique
 ancora no corpo apontado, L alterna entre escala logarítmica e linear, N mostra ou esconde
 os nomes, Home devolve a vista inicial, H mostra a lista de atalhos, a roda dá zoom e o
@@ -28,6 +27,10 @@ dotnet test           # roda os testes; não exige o Godot aberto
 ```
 
 Verificado com .NET SDK 10.0.302 e Godot 4.7.1 (variante .NET). O mínimo é o SDK 8.0.
+
+Os dois comandos acima rodam também no GitHub Actions, a cada push e a cada pull request
+(`.github/workflows/build.yml`). O runner não tem o Godot instalado e não precisa: o
+`Godot.NET.Sdk` vem do NuGet.
 
 Para conferir a tela sem depender de alguém olhando, o modo Movie Maker grava a cena em
 uma sequência de PNG, no tamanho declarado em `project.godot`:

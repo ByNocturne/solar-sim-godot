@@ -36,14 +36,20 @@ public sealed class ScaleMapper
     /// <summary>Duração da transição entre os dois modos, em segundos.</summary>
     public const double TransitionSeconds = 0.6;
 
+    /// <summary>
+    /// Fator do modo linear na janela de referência: 1 UA a 250 pixels da origem. Quem
+    /// monta a cena o reescala pela altura real da janela.
+    /// </summary>
+    public const double ReferencePixelsPerKm = 250.0 / AstroConstants.AstronomicalUnitKm;
+
     private const double MinBodyRadiusPixels = 2.5;
     private const double MaxBodyRadiusPixels = 15.0;
 
-    private double _pixelsPerKm = 250.0 / AstroConstants.AstronomicalUnitKm;
+    private double _pixelsPerKm = ReferencePixelsPerKm;
     private double _compressionFactor = 30.0;
     private double _blend = 1.0;
 
-    /// <summary>Fator do modo linear. O padrão coloca 1 UA a 250 pixels da origem.</summary>
+    /// <summary>Fator do modo linear, em pixels por quilômetro.</summary>
     public double PixelsPerKm
     {
         get => _pixelsPerKm;

@@ -70,7 +70,17 @@ public partial class SimBridge : Node2D
     {
         _sim = new SimEngine(LoadRepository());
 
-        _projector = new SystemProjector(new ScaleLayout(_sim.Bodies), new ScaleMapper());
+        // A escala é calibrada em frações da altura da janela, não em pixels fixos: sem
+        // isso, o sistema ocuparia sempre os mesmos 600 pixels no meio de qualquer tela.
+        var viewportHeight = GetViewport().GetVisibleRect().Size.Y;
+        var heightRatio = viewportHeight / ScaleLayout.ReferenceHeightPixels;
+
+        var mapper = new ScaleMapper
+        {
+            PixelsPerKm = ScaleMapper.ReferencePixelsPerKm * heightRatio,
+        };
+
+        _projector = new SystemProjector(new ScaleLayout(_sim.Bodies, viewportHeight), mapper);
         _transformer = new ViewportTransformer();
 
         foreach (var body in _sim.Bodies)

@@ -426,9 +426,19 @@ qualquer sobreposição com a tela. Quem informa as faixas é o `SimBridge`, que
 cena e é o único que sabe ao mesmo tempo da existência dos painéis e dos rótulos — assim
 `Render/` continua sem depender de `UI/`.
 
+**A calibragem da escala virou fração da altura da janela.** `ScaleLayout` reservava 300
+pixels para o nível dos planetas, número escolhido para a janela de 648 de altura em que
+o M4 foi ajustado. Ao abrir o projeto a 1080 de altura, o sistema inteiro continuava nos
+mesmos 600 pixels no meio de uma tela quase duas vezes maior, e Netuno voltava a ser
+cortado. As três medidas passaram a ser frações da altura recebida no construtor, e o
+fator do modo linear acompanha a mesma proporção. A janela agora é 1920x1080; o valor de
+648 sobrevive apenas como `ScaleLayout.ReferenceHeightPixels`, a altura em que as frações
+foram calibradas. A interface não escala junto de propósito: 12 pixels de fonte é tamanho
+de aplicação de desktop, e crescer com a resolução só a deixaria desproporcional.
+
 ### Confirmação visual
 
-Verificado com quadros renderizados pelo modo Movie Maker do Godot, a 1152x648, com a
+Verificado com quadros renderizados pelo modo Movie Maker do Godot, a 1920x1080, com a
 câmera ancorada no Sol, em Júpiter e na Lua. Os números do inspetor conferem com o que os
 marcos anteriores mediram: para a Lua, semi-eixo de 384.748 km, período de 27,32 dias e
 periápside e apoápside de 363.625 km e 405.871 km — os mesmos extremos do teste de um
@@ -436,7 +446,7 @@ século do M3. A árvore acompanha a âncora, e o corpo ancorado cai no centro d
 
 **Pronto quando:** ~~todo dado exibido vem do snapshot ou de consulta ao motor. Nenhum
 componente de UI mantém cópia própria de estado da simulação.~~ **Concluído:** build sem
-avisos, 131 testes passando — sendo 17 novos — e execução com código de saída 0 sem
+avisos, 134 testes passando — sendo 20 novos — e execução com código de saída 0 sem
 nenhum erro. Nenhum dos três painéis declara campo de estado da simulação, só referências
 aos rótulos em que escreve, e o compilador ajuda a manter isso: o motor não é mais
 alcançável a partir de `UI/`.
@@ -547,6 +557,9 @@ solar-sim-godot/
 │   ├── SolarSim.Tests.csproj
 │   ├── ArchitectureTests.cs         # guardião do invariante 1
 │   └── .gdignore
+├── .github/
+│   └── workflows/
+│       └── build.yml                # compila e testa a cada push
 ├── project.godot
 ├── solar-sim-godot.sln
 ├── .editorconfig

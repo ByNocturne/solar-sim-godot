@@ -22,6 +22,12 @@ obj/
 data_*/
 mono_crash.*.json
 
+# Quadros do modo Movie Maker, usados para conferir a tela e depois descartados
+frames/
+
+# Rascunhos pessoais; o que vira plano vai para o backlog do ROADMAP
+Ideias para o futuro.txt
+
 # Resultados de teste
 TestResults/
 *.trx

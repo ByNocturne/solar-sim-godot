@@ -38,7 +38,8 @@ dotnet build
 dotnet test     # os testes do motor rodam sem o Godot
 ```
 
-Verificado com .NET SDK 10.0.302 e Godot 4.7.1.
+Verificado com .NET SDK 10.0.302 e Godot 4.7.1. Os mesmos dois comandos rodam no GitHub
+Actions a cada push.
 
 ## Arquitetura
 
@@ -82,6 +83,10 @@ A escala é hierárquica: cada corpo tem o seu próprio mapa para os filhos, dim
 pela maior órbita que abriga. Sem isso, a órbita da Lua — 390 vezes menor que a da Terra —
 sumiria dentro do disco do planeta. O raio desenhado dos corpos tem escala própria, sem
 relação com a das distâncias, porque em proporção real a Terra teria centésimos de pixel.
+
+Quanto espaço cada nível recebe é fração da altura da janela, e não uma contagem fixa de
+pixels: assim a mesma calibragem serve para qualquer resolução, em vez de deixar o sistema
+encolhido no meio de uma tela grande.
 
 ## Unidades
 

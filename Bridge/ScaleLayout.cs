@@ -14,9 +14,20 @@ namespace SolarSim.Bridge;
 /// </remarks>
 public sealed class ScaleLayout
 {
+    /// <summary>
+    /// Altura de janela em que as frações abaixo foram calibradas, em pixels. As frações
+    /// existem para que a mesma calibragem valha em qualquer resolução: com valores
+    /// absolutos, o sistema ocuparia o mesmo punhado de pixels no meio de uma tela maior.
+    /// </summary>
+    public const double ReferenceHeightPixels = 648.0;
+
+    private const double SystemFraction = 300.0 / ReferenceHeightPixels;
+    private const double SatelliteFraction = 34.0 / ReferenceHeightPixels;
+    private const double DeepFraction = 12.0 / ReferenceHeightPixels;
+
     private readonly Dictionary<string, OrbitLevel> _levelByParentId;
 
-    public ScaleLayout(IReadOnlyList<CelestialBodyData> bodies)
+    public ScaleLayout(IReadOnlyList<CelestialBodyData> bodies, double viewportHeightPixels)
     {
         ArgumentNullException.ThrowIfNull(bodies);
 
@@ -41,7 +52,8 @@ public sealed class ScaleLayout
             entry => entry.Key,
             entry => new OrbitLevel(
                 entry.Value,
-                ScreenRadiusForDepth(depthById.GetValueOrDefault(entry.Key) + 1)),
+                ScreenRadiusForDepth(
+                    depthById.GetValueOrDefault(entry.Key) + 1, viewportHeightPixels)),
             StringComparer.Ordinal);
     }
 
@@ -51,15 +63,16 @@ public sealed class ScaleLayout
     /// da Lua ocupasse a tela inteira, o sistema deixaria de ser legível como hierarquia.
     /// </summary>
     /// <remarks>
-    /// O valor da profundidade 1 é metade da altura útil da janela padrão de 1152x648:
-    /// com ele, a órbita de Netuno cabe na tela sem zoom.
+    /// A profundidade 1 fica um pouco abaixo de metade da altura da janela, que é o que
+    /// faz a órbita de Netuno caber na tela sem zoom em qualquer resolução.
     /// </remarks>
-    public static double ScreenRadiusForDepth(int depth) => depth switch
-    {
-        <= 1 => 300.0,
-        2 => 34.0,
-        _ => 12.0,
-    };
+    public static double ScreenRadiusForDepth(int depth, double viewportHeightPixels)
+        => viewportHeightPixels * depth switch
+        {
+            <= 1 => SystemFraction,
+            2 => SatelliteFraction,
+            _ => DeepFraction,
+        };
 
     /// <summary>
     /// Nível a aplicar nos filhos deste pai. Para um pai sem filhos, devolve um nível

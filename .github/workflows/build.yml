@@ -1,0 +1,30 @@
+# O motor e os testes nao dependem do Godot instalado, e o projeto do Godot resolve o
+# Godot.NET.Sdk pelo NuGet — entao a solucao inteira compila num runner limpo.
+name: build
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # 8.0 para o motor e o projeto do Godot, 10.0 para os testes.
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Restaurar
+        run: dotnet restore
+
+      - name: Compilar
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Testar
+        run: dotnet test --configuration Release --no-build

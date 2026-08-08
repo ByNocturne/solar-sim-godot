@@ -10,27 +10,50 @@ namespace SolarSim.Tests;
 /// </summary>
 public sealed class ProjectionTests
 {
+    private const double Altura = ScaleLayout.ReferenceHeightPixels;
+
     [Fact]
     public void CadaNivelGanhaOEspacoDeTelaDaSuaProfundidade()
     {
         var layout = Layout();
 
         Assert.Equal(
-            ScaleLayout.ScreenRadiusForDepth(1), layout.LevelOf("sun").ScreenRadiusPixels);
+            Raio(1), layout.LevelOf("sun").ScreenRadiusPixels);
         Assert.Equal(
-            ScaleLayout.ScreenRadiusForDepth(2), layout.LevelOf("earth").ScreenRadiusPixels);
+            Raio(2), layout.LevelOf("earth").ScreenRadiusPixels);
         Assert.Equal(
-            ScaleLayout.ScreenRadiusForDepth(2), layout.LevelOf("jupiter").ScreenRadiusPixels);
+            Raio(2), layout.LevelOf("jupiter").ScreenRadiusPixels);
 
-        // O sistema inteiro precisa caber na metade da altura da janela padrão.
-        Assert.True(ScaleLayout.ScreenRadiusForDepth(1) <= 324.0);
+        // O sistema inteiro precisa caber na metade da altura da janela.
+        Assert.True(Raio(1) <= Altura / 2.0);
+    }
+
+    /// <summary>
+    /// A calibragem é em fração da altura, e não em pixels: numa tela mais alta o sistema
+    /// tem que crescer junto, senão fica um punhado de pixels perdido no meio dela.
+    /// </summary>
+    [Theory]
+    [InlineData(648.0)]
+    [InlineData(1080.0)]
+    [InlineData(2160.0)]
+    public void OEspacoDeCadaNivelAcompanhaAAlturaDaJanela(double altura)
+    {
+        var layout = new ScaleLayout(SolarSystem.NewEngine().Bodies, altura);
+        var proporcao = altura / Altura;
+
+        Assert.Equal(
+            Raio(1) * proporcao,
+            layout.LevelOf("sun").ScreenRadiusPixels,
+            tolerance: 1e-9);
+
+        Assert.True(layout.LevelOf("sun").ScreenRadiusPixels <= altura / 2.0);
     }
 
     [Fact]
     public void OLimiteDeCadaNivelEOApoapsisDoFilhoMaisDistante()
     {
         var sim = SolarSystem.NewEngine();
-        var layout = new ScaleLayout(sim.Bodies);
+        var layout = new ScaleLayout(sim.Bodies, Altura);
 
         var netuno = sim.ElementsOf("neptune")!.Value;
         var callisto = sim.ElementsOf("callisto")!.Value;
@@ -101,7 +124,7 @@ public sealed class ProjectionTests
     public void SistemaDeSatelitesCabeNoEspacoReservadoAoNivel()
     {
         var (projector, _) = Projetar();
-        var limite = ScaleLayout.ScreenRadiusForDepth(2);
+        var limite = Raio(2);
 
         foreach (var (planetaId, sateliteId) in new[]
         {
@@ -235,12 +258,15 @@ public sealed class ProjectionTests
         => projector.Mapper.BodyRadiusPixels(
             sim.Bodies.Single(body => body.Id == bodyId).RadiusKm);
 
-    private static ScaleLayout Layout() => new(SolarSystem.NewEngine().Bodies);
+    private static double Raio(int profundidade)
+        => ScaleLayout.ScreenRadiusForDepth(profundidade, Altura);
+
+    private static ScaleLayout Layout() => new(SolarSystem.NewEngine().Bodies, Altura);
 
     private static (SystemProjector Projector, SystemStateSnapshot Snapshot) Projetar()
     {
         var sim = SolarSystem.NewEngine();
-        var projector = new SystemProjector(new ScaleLayout(sim.Bodies), new ScaleMapper());
+        var projector = new SystemProjector(new ScaleLayout(sim.Bodies, Altura), new ScaleMapper());
 
         var parents = sim.Bodies.ToDictionary(
             body => body.Id, body => body.ParentId, StringComparer.Ordinal);
