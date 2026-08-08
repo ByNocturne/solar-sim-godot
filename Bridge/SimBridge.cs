@@ -53,6 +53,7 @@ public partial class SimBridge : Node3D
     private readonly CameraRig _rig = new();
 
     private SimEngine _sim = null!;
+    private EnvironmentService _environment = null!;
     private SystemProjector _projector = null!;
     private ViewportTransformer _transformer = null!;
 
@@ -67,6 +68,12 @@ public partial class SimBridge : Node3D
     /// remontá-la: o evento de quadro carrega posições, e não estrutura.
     /// </summary>
     public event Action? StructureChanged;
+
+    /// <summary>
+    /// Potencial biosfera detectada (BHI alto ou assinatura química). Relays do motor
+    /// ambiental; a UI de ensino pode escutar sem tocar no <see cref="SimEngine"/>.
+    /// </summary>
+    public event Action<PotentialBiosphereDetectedEventArgs>? PotentialBiosphereDetected;
 
     // Não se chama Scale porque Node3D já tem uma propriedade com esse nome.
     public ScaleMapper ScaleMap => _projector.Mapper;
@@ -95,6 +102,8 @@ public partial class SimBridge : Node3D
     public override void _Ready()
     {
         _sim = new SimEngine(LoadRepository());
+        _environment = new EnvironmentService(LoadEnvironments());
+        _environment.PotentialBiosphereDetected += args => PotentialBiosphereDetected?.Invoke(args);
 
         // A escala é calibrada em frações da altura da janela, não em pixels fixos: sem
         // isso, o sistema ocuparia sempre os mesmos 600 pixels no meio de qualquer tela.
@@ -196,6 +205,14 @@ public partial class SimBridge : Node3D
     /// </summary>
     public BodyReport ReportFor(string bodyId)
         => BodyReport.For(_sim, bodyId, _sim.Time.JulianDate);
+
+    /// <summary>Retrato ambiental do corpo na Data Juliana atual.</summary>
+    public EnvironmentReport EnvironmentFor(string bodyId)
+        => _environment.ReportFor(_sim, bodyId);
+
+    /// <summary>Índice de habitabilidade do corpo na Data Juliana atual.</summary>
+    public double HabitabilityFor(string bodyId)
+        => EnvironmentFor(bodyId).HabitabilityIndex;
 
     /// <summary>
     /// Solta uma sonda a partir do corpo ancorado e ancora a câmera nela.
@@ -435,6 +452,27 @@ public partial class SimBridge : Node3D
         return JsonBodyRepository.FromJson(file.GetAsText(), path);
     }
 
+    private static IReadOnlyDictionary<string, BodyEnvironment> LoadEnvironments()
+    {
+        var path = $"res://{EnvironmentLoader.DefaultRelativePath}";
+        using var file = Godot.FileAccess.Open(path, Godot.FileAccess.ModeFlags.Read);
+
+        if (file is null)
+        {
+            throw new SystemDataException(
+                $"Não foi possível abrir '{path}': {Godot.FileAccess.GetOpenError()}.");
+        }
+
+        try
+        {
+            return EnvironmentLoader.Parse(file.GetAsText());
+        }
+        catch (SystemDataException error)
+        {
+            throw new SystemDataException($"Erro em '{path}'. {error.Message}", error);
+        }
+    }
+
     /// <summary>
     /// A árvore é montada em código em vez de em cenas .tscn porque a decisão entre 2D e
     /// 3D só acontece no M6: assim não há arquivos de cena para refazer.
@@ -480,6 +518,10 @@ public partial class SimBridge : Node3D
         var inspector = new InspectorPanel { Name = "InspectorPanel" };
         AddChild(inspector);
         inspector.Attach(this);
+
+        var teaching = new TeachingHud { Name = "TeachingHud" };
+        AddChild(teaching);
+        teaching.Attach(this);
     }
 
     private void AddOrbitNode(CelestialBodyData body)

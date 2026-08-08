@@ -82,6 +82,30 @@ public static class DisplayFormat
     public static string TimeRate(double multiplier)
         => Duration(multiplier / AstroConstants.SecondsPerDay) + "/s";
 
+    public static string Temperature(double kelvin)
+        => Format(kelvin, "N1", " K");
+
+    public static string Pressure(double pascals)
+    {
+        if (!double.IsFinite(pascals))
+        {
+            return Absent;
+        }
+
+        if (Math.Abs(pascals) >= 1.0e4)
+        {
+            return Format(pascals / 1.0e5, "N2", " bar");
+        }
+
+        return Format(pascals, "N0", " Pa");
+    }
+
+    public static string HabitabilityIndex(double bhi)
+        => Format(Math.Clamp(bhi, 0.0, 1.0), "N2");
+
+    public static string RadiationRelative(double relative)
+        => Format(relative, "N2", "× Terra");
+
     /// <summary>
     /// Um número que não é finito não vira texto: vira traço. O apoápside de uma
     /// hipérbole é infinito de verdade, e a alternativa seria a coluna exibir "∞" ou, pior,

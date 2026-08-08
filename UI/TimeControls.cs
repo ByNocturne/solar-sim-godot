@@ -33,7 +33,9 @@ public partial class TimeControls : CanvasLayer
         "P / Shift+P: solta uma sonda em órbita ou em fuga",
         "Delete: descarta a sonda ancorada",
         "F5 / F9: salva e carrega",
+        "I: análise ambiental do corpo ancorado",
         "H: mostra ou esconde esta ajuda",
+        "Passe o mouse nos rótulos do inspetor para o glossário",
     ];
 
     /// <summary>
@@ -134,6 +136,10 @@ public partial class TimeControls : CanvasLayer
                 _help.Visible = !_help.Visible;
                 break;
 
+            case Key.I:
+                GetParent()?.GetNodeOrNull<TeachingHud>("TeachingHud")?.Toggle();
+                break;
+
             case Key.P:
                 Launch(key.ShiftPressed ? EscapeFactor : OrbitFactor);
                 break;
@@ -164,6 +170,8 @@ public partial class TimeControls : CanvasLayer
         AddChild(box);
 
         var rows = new VBoxContainer();
+        // Sem folga, a terceira linha (sonda) colava na margem e parecia cortada.
+        rows.AddThemeConstantOverride("separation", 6);
         box.AddChild(rows);
 
         rows.AddChild(BuildStatusRow());
@@ -322,7 +330,7 @@ public partial class TimeControls : CanvasLayer
     private void BuildHelp()
     {
         _help = Panels.Box();
-        Panels.AnchorCenter(_help, 400.0f, 306.0f);
+        Panels.AnchorCenter(_help, 420.0f, 330.0f);
         _help.Visible = false;
         AddChild(_help);
 

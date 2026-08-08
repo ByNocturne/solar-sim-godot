@@ -715,6 +715,119 @@ inclusive trocando de atrator ao atravessar a esfera de influência. Build sem a
 
 
 
+## Fase 2 — Motor ambiental e astrobiológico (M8–M14)
+
+Depois do M7 o produto passa a responder também “como é a superfície?” — temperatura,
+atmosfera, maré, habitabilidade — sem abandonar os quatro invariantes. O clima é
+**função da Data Juliana e de perfis estáticos**, não integração acumulativa. Relatórios
+ambientais seguem o padrão do `BodyReport` (consulta e descarte); o
+`SystemStateSnapshot` continua só com posições.
+
+Dados orbitais ficam em `Data/solar_system_j2000.json`. Perfis ambientais moram em
+`Data/body_environment_j2000.json`, indexados por `bodyId`.
+
+---
+
+
+
+## M8 — Perfis ambientais e balanço térmico
+
+- [x] `Engine/Models/BodyEnvironment.cs` — albedo, spin, atmosfera, propriedades estelares
+- [x] `Engine/Data/EnvironmentLoader.cs` + `Data/body_environment_j2000.json`
+- [x] `Engine/Core/ThermalCalculator.cs` — T de equilíbrio e estufa paramétrica
+- [x] Testes: Vênus T > 700 K; Terra na faixa de água líquida superficial
+
+**Pronto quando:** ~~o JSON ambiental carrega com o sistema; `dotnet test` valida Vênus e
+Terra; o JSON orbital permanece intacto.~~ **Concluído.**
+
+---
+
+
+
+## M9 — Retenção atmosférica e magnetosfera
+
+- [x] `AtmosphericEscape` — Jeans: retenção/perda por espécie
+- [x] `MagnetosphereEstimator` — momento magnético heurístico e dose relativa
+- [x] Relatório ambiental com retenção e radiação (`EnvironmentService`)
+- [x] Testes: Marte vs Terra (perda / radiação); Vênus retém pesados
+
+**Pronto quando:** ~~Marte e Terra distinguíveis nos testes sem UI.~~ **Concluído.**
+
+---
+
+
+
+## M10 — Aquecimento de maré e oceanos subsuperficiais
+
+- [x] `TidalHeatingCalculator` — dissipação ∝ M_pai² R⁵ e² / a⁶
+- [x] Presença de água líquida superficial vs subterrânea
+- [x] Testes: Europa com oceano interno; Terra com água superficial
+
+**Pronto quando:** ~~Europa positiva para oceano interno nos testes.~~ **Concluído.**
+
+---
+
+
+
+## M11 — Índice de habitabilidade e exposição Bridge/UI
+
+- [x] `HabitabilityEvaluator` — BHI ∈ [0, 1]
+- [x] `EnvironmentReport` / fachada `SimBridge.EnvironmentFor` / `HabitabilityFor`
+- [x] `DisplayFormat` para K, pressão, BHI
+- [x] Seção ambiental no `InspectorPanel`
+- [x] Testes: Terra BHI > 0,85; Marte e Vênus bem abaixo
+
+**Pronto quando:** ~~o inspetor mostra T, atmosfera, radiação, água e BHI do corpo ancorado.~~ **Concluído.**
+
+---
+
+
+
+## M12 — Rotação, ciclo diurno/sazonal e zonas
+
+Absorve do backlog antigo: rotação axial, obliquidade e **insolação como número**
+(sem fases 3D).
+
+- [x] Uso real de período de rotação e obliquidade do perfil
+- [x] `DiurnalSeasonalModel` — amplitude dia/noite e sazonal
+- [x] `ZoneGridCalculator` — equador / temperada / polar, albedo efetivo f(JD)
+- [x] Sem render de terminador
+
+**Pronto quando:** ~~Terra com contraste equador–polo ao saltar JD; Marte com amplitude
+diurna maior que a Terra.~~ **Concluído.**
+
+---
+
+
+
+## M13 — Biosignatures, eventos e tempo geológico
+
+- [x] `BiosignatureEvaluator` — O₂+CH₄ e O₃
+- [x] `GeologicalTimeModel` — L(t) e erosão atmosférica como f(JD − época)
+- [x] Evento `PotentialBiosphereDetected` (debounce por corpo)
+- [x] Teste de salto +1 Gyr (Terra / Marte)
+
+**Pronto quando:** ~~salto geológico nos testes; evento dispara com BHI/assinatura;
+save/load continua sendo JD (+ dinâmicos).~~ **Concluído.**
+
+---
+
+
+
+## M14 — HUD de ensino e análises
+
+Absorve do backlog: HUD de ensino/explicações (sem lore narrativo).
+
+- [x] Overlay acionável (`I`) com texto gerado dos flags do relatório
+- [x] Comparação leve Terra vs corpo ancorado via fachada
+- [x] Zero estado de simulação na UI (`TeachingExplain` + `TeachingHud`)
+
+**Pronto quando:** ~~com Terra/Marte ancorados, a HUD explica BHI alto vs perda/radiação.~~ **Concluído.**
+
+---
+
+
+
 ## Estrutura de arquivos alvo
 
 ```
@@ -722,48 +835,65 @@ solar-sim-godot/
 ├── .cursor/
 │   └── rules/                       # convenções por camada, com exemplos
 ├── Data/
-│   └── solar_system_j2000.json
+│   ├── solar_system_j2000.json
+│   └── body_environment_j2000.json  # perfis ambientais (M8+)
 ├── Engine/                          # DOMÍNIO PURO (projeto próprio, zero Godot)
 │   ├── SolarSim.Engine.csproj
 │   ├── .gdignore
 │   ├── Core/
-│   │   ├── AstroConstants.cs        # novo — constantes e unidades
+│   │   ├── AstroConstants.cs
 │   │   ├── TimeEngine.cs
-│   │   ├── KeplerPropagator.cs      # elipse e hipérbole, em ramos separados (M7)
-│   │   ├── OrbitDetermination.cs    # estado para elementos, o inverso (M7)
-│   │   └── SphereOfInfluence.cs     # raio de Laplace (M7)
+│   │   ├── KeplerPropagator.cs
+│   │   ├── OrbitDetermination.cs
+│   │   ├── SphereOfInfluence.cs
+│   │   ├── ThermalCalculator.cs         # M8
+│   │   ├── AtmosphericEscape.cs         # M9
+│   │   ├── MagnetosphereEstimator.cs    # M9
+│   │   ├── TidalHeatingCalculator.cs    # M10
+│   │   ├── HabitabilityEvaluator.cs     # M11
+│   │   ├── DiurnalSeasonalModel.cs      # M12
+│   │   ├── ZoneGridCalculator.cs        # M12
+│   │   ├── BiosignatureEvaluator.cs     # M13
+│   │   └── GeologicalTimeModel.cs       # M13
 │   ├── Models/
 │   │   ├── CelestialBodyData.cs
 │   │   ├── OrbitalElements.cs
-│   │   ├── StateVector.cs           # posição + velocidade (M7)
-│   │   ├── Trajectory.cs            # arcos emendados de um corpo dinâmico (M7)
-│   │   └── Vector3D.cs
+│   │   ├── StateVector.cs
+│   │   ├── Trajectory.cs
+│   │   ├── Vector3D.cs
+│   │   ├── SystemStateSnapshot.cs
+│   │   ├── BodyEnvironment.cs           # M8
+│   │   └── EnvironmentReport.cs         # M8–M13
 │   ├── Data/
-│   │   ├── IBodyRepository.cs       # inversão de dependência
-│   │   ├── DataLoader.cs            # JSON para unidades internas, com validação
+│   │   ├── IBodyRepository.cs
+│   │   ├── DataLoader.cs
 │   │   ├── JsonBodyRepository.cs
-│   │   ├── BodyHierarchy.cs         # ordem de avaliação e detecção de ciclo
-│   │   ├── SaveState.cs             # JD + corpos dinâmicos, e nada mais (M7)
-│   │   └── SystemDataException.cs
+│   │   ├── BodyHierarchy.cs
+│   │   ├── SaveState.cs
+│   │   ├── SystemDataException.cs
+│   │   └── EnvironmentLoader.cs         # M8
+│   ├── EnvironmentService.cs            # M8–M13: consulta ambiental f(JD)
 │   └── SimEngine.cs
 ├── Bridge/                          # CAMADA DE ADAPTAÇÃO
 │   ├── SimBridge.cs                 # fachada: único caminho da UI até o motor
-│   ├── ViewportTransformer.cs       # double para float, relativo ao foco
-│   ├── ScaleMapper.cs               # curva perceptual e transição de modo
-│   ├── ScaleLayout.cs               # espaço de tela de cada nível da hierarquia
-│   ├── SystemProjector.cs           # composição das posições em pixels
-│   ├── CameraRig.cs                 # âncora, pan e transição entre alvos
-│   ├── BodyReport.cs                # retrato de um corpo, consultado ao motor (M5)
-│   ├── DisplayFormat.cs             # número em texto, com escolha de unidade (M5)
-│   └── BodyPalette.cs               # 0xRRGGBB para Color, em um lugar só
-├── Render/                          # 3D com projeção ortográfica (M6)
-│   ├── CelestialBodyNode.cs         # esfera sem sombreamento
-│   ├── OrbitLineRenderer.cs         # malha de linha reconstruída na troca de escala
-│   ├── BodyLabels.cs                # rótulos em camada de tela, projetados pela câmera
-│   └── SpaceCamera.cs               # ortográfica, orbital em azimute e elevação
+│   ├── ViewportTransformer.cs
+│   ├── ScaleMapper.cs
+│   ├── ScaleLayout.cs
+│   ├── SystemProjector.cs
+│   ├── CameraRig.cs
+│   ├── BodyReport.cs
+│   ├── DisplayFormat.cs
+│   ├── TeachingExplain.cs           # M14: texto a partir dos flags do relatório
+│   └── BodyPalette.cs
+├── Render/
+│   ├── CelestialBodyNode.cs
+│   ├── OrbitLineRenderer.cs
+│   ├── BodyLabels.cs
+│   └── SpaceCamera.cs
 ├── UI/
-│   ├── Panels.cs                    # caixa, rótulos e botões comuns
+│   ├── Panels.cs
 │   ├── InspectorPanel.cs
+│   ├── TeachingHud.cs               # M14
 │   ├── TimeControls.cs
 │   └── SystemTree.cs
 ├── Scenes/
@@ -792,19 +922,35 @@ solar-sim-godot/
 
 ## Backlog
 
-Fora do escopo dos oito marcos, em ordem aproximada de valor:
+Fora do escopo dos marcos M0–M14, em trilhas separadas:
 
-- Elementos orbitais variáveis no tempo (taxas seculares), que melhoram bastante a
-precisão de longo prazo por um custo baixo
+### Precisão e missões
+
+- Elementos orbitais variáveis no tempo (taxas seculares)
 - Perturbações gravitacionais de terceiro corpo
 - Precisão de nível VSOP87 ou DE440
 - Integração numérica de N-corpos como modo alternativo ao analítico
 - Asteroides e cometas
-- Rotação axial, obliquidade e fases de iluminação
 - Janelas de transferência e planejamento de manobras
-- Constelações como pano de fundo, o que exige um catálogo de estrelas e a projeção da
-esfera celeste
-- HUD de ensino/explicações ou análises.
+
+### Render
+
+- Fases de iluminação **visuais** 3D / terminador (a insolação matemática está no M12)
+- Constelações como pano de fundo (catálogo e projeção da esfera celeste)
+
+### Empacotamento — Engine host-agnostic
+
+Tornar o simulador consumível por qualquer host (CLI, API, outro engine) sem arrastar
+Godot, `SimBridge`, `UI/` ou `Render/`:
+
+- Tratar `SolarSim.Engine` como biblioteca (NuGet quando fizer sentido)
+- Extrair de `Bridge/` o que já é Godot-free (`BodyReport`, `DisplayFormat`, escala) para
+  um assembly intermediário sem `Node`
+- Fachada de aplicação pura; o Godot só adapta input/frame
+- Critério: host mínimo fora do Godot roda Sistema Solar + BHI só com assemblies sem Godot
+
+Rotação/obliquidade, HUD de ensino e insolação matemática saíram deste backlog para
+M12 e M14.
 
 ---
 
@@ -823,6 +969,15 @@ graph LR
     M5 --> M6[M6 Decisao 2D/3D]
     M2 --> M7[M7 Missoes]
     M6 --> M7
+    M7 --> M8[M8 Perfis e termica]
+    M8 --> M9[M9 Atmosfera e magnetosfera]
+    M8 --> M10[M10 Mares e oceanos]
+    M9 --> M11[M11 BHI e Inspector]
+    M10 --> M11
+    M11 --> M12[M12 Rotacao sazonal e zonas]
+    M12 --> M13[M13 Biosignatures e tempo geologico]
+    M11 --> M14[M14 HUD de ensino]
+    M13 --> M14
 ```
 
 
@@ -833,3 +988,5 @@ qual das duas camadas veio o erro.
 
 M7 depende tecnicamente só do M2, mas fazê-lo antes do M6 significa escrever código de
 missão contra uma camada de renderização que ainda pode mudar.
+
+M14 depende de M11 (relatórios) e fica melhor depois de M13 (biosignatures para explicar).

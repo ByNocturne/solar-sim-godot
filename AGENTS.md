@@ -5,24 +5,26 @@ como base para trabalho futuro com missões e transferências orbitais.
 
 ## Estado atual
 
-Os oito marcos, M0 a M7, estão concluídos e verificados em execução. O motor carrega
-o Sistema Solar de `Data/solar_system_j2000.json` — Sol, oito planetas, a Lua, as
-galileanas e Titã — compõe a posição de cada corpo a partir da do pai e produz posição e
-velocidade, com erro radial abaixo de 0,02% contra as efemérides DE441 do JPL. A
-apresentação é tridimensional com projeção ortográfica, escala hierárquica com modo
-logarítmico e linear, câmera ancorável e orbitável e desenho de órbitas, com árvore do
-sistema, barra de tempo e inspetor de corpo. O M7 acrescentou o que falta para missões:
-trajetórias hiperbólicas, conversão de vetor de estado em elementos, corpos criados em
-runtime, emenda de cônicas por esfera de influência e save/load. O que vem depois está no
-backlog do [ROADMAP.md](ROADMAP.md).
+Os marcos M0 a M14 estão concluídos e verificados em testes (`dotnet test`). O motor
+carrega o Sistema Solar de `Data/solar_system_j2000.json` — Sol, oito planetas, a Lua, as
+galileanas e Titã — e perfis ambientais de `Data/body_environment_j2000.json`. Compõe a
+posição de cada corpo a partir da do pai e produz posição e velocidade, com erro radial
+abaixo de 0,02% contra as efemérides DE441 do JPL. A apresentação é tridimensional com
+projeção ortográfica, escala hierárquica com modo logarítmico e linear, câmera ancorável e
+orbitável e desenho de órbitas, com árvore do sistema, barra de tempo e inspetor de corpo.
+O M7 acrescentou missões: trajetórias hiperbólicas, conversão de vetor de estado em
+elementos, corpos criados em runtime, emenda de cônicas por esfera de influência e
+save/load. A Fase 2 (M8–M14) acrescenta termodinâmica, escape atmosférico, magnetosfera,
+aquecimento de maré, BHI, ciclos diurno/sazonal, biosignatures, evolução geológica
+f(JD) e HUD de ensino (`I`). O que vem depois está no backlog do [ROADMAP.md](ROADMAP.md).
 
 Para ver rodando: abra o projeto no Godot e pressione F5, ou `godot --path .`. Espaço pausa, setas ajustam a velocidade, R volta
 para J2000, Tab e Shift+Tab ancoram a câmera no corpo seguinte e no anterior, um clique
 ancora no corpo apontado, L alterna entre escala logarítmica e linear, N mostra ou esconde
-os nomes, Home devolve a vista inicial, H mostra a lista de atalhos, a roda dá zoom, o
-botão direito gira a câmera e o do meio — ou Shift com o direito — arrasta. P e Shift+P
-soltam uma sonda em órbita ou em fuga do corpo ancorado, Delete descarta a sonda ancorada,
-F5 salva e F9 carrega.
+os nomes, Home devolve a vista inicial, H mostra a lista de atalhos, I abre o ensino
+ambiental, a roda dá zoom, o botão direito gira a câmera e o do meio — ou Shift com o
+direito — arrasta. P e Shift+P soltam uma sonda em órbita ou em fuga do corpo ancorado,
+Delete descarta a sonda ancorada, F5 salva e F9 carrega.
 
 ## Como construir
 
@@ -68,11 +70,11 @@ Essa separação é o que faz o invariante 1 ser garantido pelo compilador: `usi
 
 | Pasta | Responsabilidade |
 | --- | --- |
-| `Engine/` | Domínio puro: matemática orbital, tempo, estado. Zero Godot |
+| `Engine/` | Domínio puro: matemática orbital, tempo, estado, ambiente/habitabilidade. Zero Godot |
 | `Bridge/` | Adaptação: precisão, escala, ponte de eventos com o Godot |
 | `Render/` | Nós visuais em 3D com projeção ortográfica |
 | `UI/` | Painéis e controles |
-| `Data/` | Dados estáticos do Sistema Solar na época J2000 |
+| `Data/` | Dados estáticos do Sistema Solar (órbitas + perfis ambientais) na época J2000 |
 | `Tests/` | Testes do motor; referencia apenas `Engine/` |
 
 `Tests/` também compila os arquivos de `Bridge/` que não tocam no Godot — `ScaleMapper`,
