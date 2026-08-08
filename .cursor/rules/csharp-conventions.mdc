@@ -1,0 +1,38 @@
+---
+description: Convenções de código C# do projeto
+globs: **/*.cs
+alwaysApply: false
+---
+
+# Convenções C#
+
+- Nullable reference types habilitado; não silenciar avisos com `!` sem justificativa
+- Structs do domínio (`Vector3D`, `OrbitalElements`, `StateVector`) são imutáveis e
+  `readonly`
+- Classes que não foram projetadas para herança são `sealed`
+- Namespaces com escopo de arquivo (`namespace SolarSim.Engine.Core;`)
+- Evitar alocação em heap no caminho de propagação, que roda a cada frame: preferir
+  structs e evitar LINQ ali
+
+## Comentários
+
+Comentários explicam a razão física ou a armadilha numérica, não o que o código faz.
+
+```csharp
+// BAD
+// Multiplica delta por 86400
+double dtSeconds = deltaDays * 86400.0;
+
+// GOOD
+// Elementos vêm em dias julianos, mas mu está em km³/s²
+double dtSeconds = deltaDays * SecondsPerDay;
+```
+
+## Nomes
+
+Usar o nome astronômico consagrado, não uma tradução aproximada: `SemiMajorAxis`,
+`Eccentricity`, `Inclination`, `LongitudeOfAscendingNode`, `ArgumentOfPeriapsis`,
+`MeanAnomalyAtEpoch`. Isso mantém o código legível contra qualquer livro de astrodinâmica.
+
+Sufixar com a unidade quando houver risco de ambiguidade: `periodDays`, `radiusKm`,
+`angleRad`.

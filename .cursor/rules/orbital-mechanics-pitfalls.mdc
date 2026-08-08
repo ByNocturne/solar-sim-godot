@@ -1,0 +1,43 @@
+---
+description: Armadilhas numéricas conhecidas na propagação orbital
+globs: Engine/Core/**/*.cs,Engine/Models/**/*.cs,Tests/**/*.cs
+alwaysApply: false
+---
+
+# Armadilhas numéricas
+
+## Anomalia verdadeira: usar atan2
+
+A especificação original traz `tan(nu/2) = sqrt((1+e)/(1-e)) * tan(E/2)`. Essa forma perde
+precisão perto de `E = pi`, ou seja, em toda a metade da órbita próxima do afélio.
+
+```csharp
+// BAD
+double nu = 2.0 * Math.Atan(Math.Sqrt((1 + e) / (1 - e)) * Math.Tan(E / 2.0));
+
+// GOOD
+double nu = Math.Atan2(
+    Math.Sqrt(1 - e * e) * Math.Sin(E),
+    Math.Cos(E) - e);
+```
+
+## Newton-Raphson para a equação de Kepler
+
+`M = E - e*sin(E)` não tem solução fechada. Ao resolver iterativamente:
+
+- Normalizar `M` para `[0, 2*pi)` antes de iterar
+- Chute inicial `E0 = M`, exceto para `e > 0.8`, onde `E0 = pi` converge melhor
+- Tolerância `1e-12`
+- **Sempre** ter teto de iterações; sem ele, um dado ruim trava o frame
+
+## Hierarquia: pai antes de filho
+
+`P_global(A) = P_global(Pai(A)) + P_local(A)` exige ordem topológica. Calcular a Lua antes
+da Terra produz um erro de um frame que parece jitter aleatório e é difícil de rastrear
+até a causa.
+
+## Órbitas abertas
+
+O projeto é base para transferências orbitais, onde `e >= 1` é rotina, não exceção. Ao
+escrever qualquer coisa no propagador, não assuma órbita fechada de forma irreversível.
+Divisões por `(1 - e)` e cálculos de período são os pontos que quebram primeiro.

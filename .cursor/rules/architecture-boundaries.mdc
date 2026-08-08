@@ -1,0 +1,52 @@
+---
+description: Fronteiras entre as camadas Engine, Bridge, Render e UI
+alwaysApply: true
+---
+
+# Fronteiras arquiteturais
+
+Dependências apontam apenas para dentro:
+
+```
+UI/ e Render/   ->  assinam eventos e tratam input
+Bridge/         ->  converte precisão e escala
+Engine/         ->  matemática e estado; não conhece nada acima
+```
+
+## Engine/ é domínio puro
+
+Nenhum arquivo em `Engine/` pode conter `using Godot` nem referenciar tipos da engine.
+O motor deve compilar e ser testado com o Godot desinstalado.
+
+```csharp
+// BAD - Engine/Core/TimeEngine.cs
+using Godot;
+public partial class TimeEngine : Node { }
+
+// GOOD - Engine/Core/TimeEngine.cs
+public sealed class TimeEngine { }
+```
+
+Se algo em `Engine/` parece precisar do Godot, a responsabilidade está na camada errada.
+Mova para `Bridge/`.
+
+## SimBridge é o único ponto de contato
+
+`Bridge/SimBridge.cs` é o único nó do Godot que conhece o `SimEngine`. Todos os demais
+nós assinam o evento de snapshot.
+
+```csharp
+// BAD - Render/CelestialBodyNode.cs
+var pos = _simEngine.GetPosition(id);
+
+// GOOD - Render/CelestialBodyNode.cs
+simBridge.SystemUpdated += OnSystemUpdated;
+```
+
+Um nó gráfico que chama o motor diretamente multiplica os pontos de acoplamento e
+inviabiliza testar o motor isoladamente.
+
+## Render/ é descartável até o M6
+
+A escolha entre 2D e 3D só acontece no marco M6 (ver ROADMAP.md). Até lá, `Render/` é
+andaime provisório: não invista em polimento visual e não deixe regra de negócio ali.

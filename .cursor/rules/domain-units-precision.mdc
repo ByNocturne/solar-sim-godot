@@ -1,0 +1,54 @@
+---
+description: Unidades canônicas e regras de precisão numérica do domínio
+globs: Engine/**/*.cs,Bridge/**/*.cs,Tests/**/*.cs
+alwaysApply: false
+---
+
+# Unidades e precisão
+
+## Unidades canônicas
+
+- Distância em **quilômetros**
+- Tempo físico em **segundos**; calendário em Data Juliana (dias), J2000 = 2451545.0
+- Ângulos em **radianos**
+- Parâmetro gravitacional (mu) em **km³/s²**, como o JPL publica
+
+Graus existem em exatamente dois lugares: no JSON de entrada, convertidos na carga, e no
+texto exibido ao usuário. Nunca em cálculo intermediário.
+
+O propagador recebe `Δt` em dias julianos e converte para segundos uma única vez.
+
+## double no domínio, float só na renderização
+
+Toda matemática do motor opera em `double`. A conversão para `float` acontece apenas em
+`Bridge/ViewportTransformer.cs`, e apenas DEPOIS de subtrair a posição da câmera.
+
+```csharp
+// BAD - converte antes de reduzir a magnitude
+var render = new Vector2((float)corpo.X, (float)corpo.Y) - cameraPos;
+
+// GOOD - subtrai em double, converte o resultado pequeno
+double dx = corpo.X - camera.X;
+double dy = corpo.Y - camera.Y;
+var render = new Vector2((float)(dx * escala), (float)(dy * escala));
+```
+
+Converter antes da subtração trunca a mantissa e produz trepidação visual em corpos
+distantes da origem. É o bug mais fácil de introduzir e o mais difícil de diagnosticar
+neste projeto, porque só aparece longe do Sol.
+
+## Estado é função pura da Data Juliana
+
+A posição de qualquer corpo vem de um cálculo a partir do JD, nunca de integração
+acumulativa entre frames.
+
+```csharp
+// BAD
+posicao += velocidade * delta;
+
+// GOOD
+var posicao = propagator.PositionAt(elementos, jd);
+```
+
+É essa propriedade que entrega tempo reverso, salto para data arbitrária e save/load
+triviais. Qualquer estado acumulado quebra as três coisas de uma vez.

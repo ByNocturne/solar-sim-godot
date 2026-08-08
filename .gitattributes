@@ -1,0 +1,25 @@
+# Normaliza fim de linha no repositório; o checkout usa o padrão da plataforma
+* text=auto
+
+*.cs      text diff=csharp
+*.csproj  text
+*.sln     text eol=crlf
+*.md      text
+*.json    text
+*.yml     text
+
+# Formatos de texto do Godot
+*.tscn    text
+*.tres    text
+*.godot   text
+*.import  text
+*.cfg     text
+
+# Binários
+*.png     binary
+*.jpg     binary
+*.webp    binary
+*.ogg     binary
+*.wav     binary
+*.ttf     binary
+*.glb     binary
