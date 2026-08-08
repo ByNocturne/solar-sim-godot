@@ -42,6 +42,12 @@ public sealed class BodyHierarchy
 
     public int Count => InEvaluationOrder.Count;
 
+    /// <summary>
+    /// Corpo na origem do sistema. É sempre o primeiro da ordem de avaliação: a
+    /// linearização coloca todo pai antes do filho, e a validação garante raiz única.
+    /// </summary>
+    public CelestialBodyData Root => InEvaluationOrder[0];
+
     public CelestialBodyData this[int index] => InEvaluationOrder[index];
 
     /// <summary>

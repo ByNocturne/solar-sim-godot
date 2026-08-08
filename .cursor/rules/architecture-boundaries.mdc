@@ -32,19 +32,40 @@ Mova para `Bridge/`.
 
 ## SimBridge é o único ponto de contato
 
-`Bridge/SimBridge.cs` é o único nó do Godot que conhece o `SimEngine`. Todos os demais
-nós assinam o evento de snapshot.
+`Bridge/SimBridge.cs` é o único nó do Godot que conhece o `SimEngine`, e não expõe o
+motor. Quem desenha assina o evento de quadro; quem comanda ou consulta chama um método
+da fachada.
 
 ```csharp
 // BAD - Render/CelestialBodyNode.cs
 var pos = _simEngine.GetPosition(id);
 
+// BAD - UI/InspectorPanel.cs
+var jd = simBridge.Sim.Time.JulianDate;
+
 // GOOD - Render/CelestialBodyNode.cs
-simBridge.SystemUpdated += OnSystemUpdated;
+simBridge.FrameReady += OnFrameReady;
+
+// GOOD - UI/InspectorPanel.cs
+var report = simBridge.ReportFor(bodyId);
 ```
 
-Um nó gráfico que chama o motor diretamente multiplica os pontos de acoplamento e
-inviabiliza testar o motor isoladamente.
+Um nó que chama o motor diretamente multiplica os pontos de acoplamento e inviabiliza
+testar o motor isoladamente. Painel novo que precise de um dado ganha um método na
+fachada, não uma referência ao motor.
+
+## A interface não guarda estado da simulação
+
+Painéis possuem os rótulos em que escrevem e mais nada. Todo valor exibido é consultado
+na hora e descartado depois.
+
+```csharp
+// BAD - UI/InspectorPanel.cs
+private double _distanciaKm;   // desatualiza no instante em que o tempo anda
+
+// GOOD - UI/InspectorPanel.cs
+_valor.Text = DisplayFormat.Distance(simBridge.ReportFor(id).DistanceToRootKm);
+```
 
 ## Render/ é descartável até o M6
 

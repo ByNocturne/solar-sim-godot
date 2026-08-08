@@ -97,7 +97,7 @@ public partial class SpaceCamera : Camera2D
     {
         if (_bridge?.NearestBody(GetGlobalMousePosition(), PickRadius / Zoom.X) is { } bodyId)
         {
-            _bridge.Rig.AnchorTo(bodyId);
+            _bridge.AnchorTo(bodyId);
         }
     }
 
@@ -128,6 +128,6 @@ public partial class SpaceCamera : Camera2D
     {
         _zoomExponent = 0.0f;
         Zoom = Vector2.One;
-        _bridge?.Rig.AnchorTo(null);
+        _bridge?.AnchorTo(null);
     }
 }

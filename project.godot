@@ -15,6 +15,13 @@ config/description="Simulador do Sistema Solar com propagacao kepleriana analiti
 run/main_scene="res://Scenes/Main.tscn"
 config/features=PackedStringArray("4.7", "C#", "Forward Plus")
 
+[display]
+
+; Declarado em vez de herdado do padrao do Godot: ScaleLayout dimensiona o espaco de
+; tela de cada nivel da hierarquia a partir desta altura.
+window/size/viewport_width=1152
+window/size/viewport_height=648
+
 [dotnet]
 
 project/assembly_name="solar-sim-godot"

@@ -44,6 +44,18 @@ public sealed class SimEngine
     /// <summary>Corpos em ordem de avaliação: o pai sempre antes do filho.</summary>
     public IReadOnlyList<CelestialBodyData> Bodies => _hierarchy.InEvaluationOrder;
 
+    /// <summary>
+    /// Corpo na origem do sistema. É a referência das distâncias heliocêntricas, e o
+    /// nome dele é o que rotula essa distância na tela.
+    /// </summary>
+    public CelestialBodyData Root => _hierarchy.Root;
+
+    /// <summary>Dados estáticos de um corpo.</summary>
+    /// <exception cref="KeyNotFoundException">Se o identificador não existir.</exception>
+    public CelestialBodyData BodyOf(string bodyId) => _hierarchy.Get(bodyId);
+
+    public bool Contains(string bodyId) => _hierarchy.Contains(bodyId);
+
     public event Action<SystemStateSnapshot>? SystemUpdated;
 
     public void Advance(double realSecondsElapsed)

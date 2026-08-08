@@ -24,10 +24,16 @@ public readonly record struct RenderFrame(
 /// </summary>
 public partial class SimBridge : Node2D
 {
+    /// <summary>Limites do multiplicador de tempo, em módulo.</summary>
+    private const double MinSpeedMultiplier = 1.0;
+
+    private const double MaxSpeedMultiplier = 1.0e9;
+
     private const int OrbitSamples = 240;
 
     private readonly Dictionary<string, Vector2> _screenPositions = new(StringComparer.Ordinal);
     private readonly Dictionary<string, string?> _parents = new(StringComparer.Ordinal);
+    private readonly CameraRig _rig = new();
 
     private SimEngine _sim = null!;
     private SystemProjector _projector = null!;
@@ -39,18 +45,26 @@ public partial class SimBridge : Node2D
 
     public event Action<RenderFrame>? FrameReady;
 
-    public SimEngine Sim => _sim;
-
     // Não se chama Scale porque Node2D já tem uma propriedade com esse nome.
     public ScaleMapper ScaleMap => _projector.Mapper;
 
-    public CameraRig Rig { get; } = new();
+    /// <summary>Corpos em ordem de avaliação: o pai sempre antes do filho.</summary>
+    public IReadOnlyList<CelestialBodyData> Bodies => _sim.Bodies;
+
+    public string? AnchorBodyId => _rig.AnchorBodyId;
 
     /// <summary>Nome legível do corpo ancorado, para exibição.</summary>
     public string AnchorName
-        => Rig.AnchorBodyId is { } id
-            ? _sim.Bodies.FirstOrDefault(body => body.Id == id)?.Name ?? id
-            : "origem";
+        => _rig.AnchorBodyId is { } id ? _sim.BodyOf(id).Name : "origem";
+
+    public bool IsPaused => _sim.Time.IsPaused;
+
+    /// <summary>Segundos simulados por segundo real. Negativo faz o tempo correr para trás.</summary>
+    public double SpeedMultiplier => _sim.Time.SpeedMultiplier;
+
+    public double JulianDate => _sim.Time.JulianDate;
+
+    public DateTime UtcDateTime => _sim.Time.UtcDateTime;
 
     public override void _Ready()
     {
@@ -64,7 +78,7 @@ public partial class SimBridge : Node2D
             _parents[body.Id] = body.ParentId;
         }
 
-        Rig.AnchorTo(_sim.Bodies[0].Id);
+        _rig.AnchorTo(_sim.Root.Id);
 
         // Cerca de 23 dias por segundo real: uma volta da Terra em ~16 segundos.
         _sim.Time.SpeedMultiplier = 2_000_000.0;
@@ -86,7 +100,10 @@ public partial class SimBridge : Node2D
     /// arrastar mova sempre a mesma distância sob o cursor.
     /// </summary>
     public void PanByScreenPixels(Vector2 deltaScreen, float zoom)
-        => Rig.Pan(new Vector3D(-deltaScreen.X / zoom, deltaScreen.Y / zoom, 0.0));
+        => _rig.Pan(new Vector3D(-deltaScreen.X / zoom, deltaScreen.Y / zoom, 0.0));
+
+    /// <summary>Ancora a câmera em um corpo, ou na origem do sistema se nulo.</summary>
+    public void AnchorTo(string? bodyId) => _rig.AnchorTo(bodyId);
 
     /// <summary>Ancora no próximo corpo da ordem de avaliação, ou no anterior.</summary>
     public void CycleAnchor(int direction)
@@ -96,7 +113,7 @@ public partial class SimBridge : Node2D
 
         for (var index = 0; index < bodies.Count; index++)
         {
-            if (bodies[index].Id == Rig.AnchorBodyId)
+            if (bodies[index].Id == _rig.AnchorBodyId)
             {
                 current = index;
                 break;
@@ -105,8 +122,43 @@ public partial class SimBridge : Node2D
 
         var next = (((current + direction) % bodies.Count) + bodies.Count) % bodies.Count;
 
-        Rig.AnchorTo(bodies[next].Id);
+        _rig.AnchorTo(bodies[next].Id);
     }
+
+    public void TogglePause() => _sim.Time.IsPaused = !_sim.Time.IsPaused;
+
+    /// <summary>
+    /// Multiplica a velocidade do tempo preservando o sentido em que ele corre. Acelerar
+    /// com o tempo invertido acelera para trás, que é o que se espera.
+    /// </summary>
+    public void ScaleSpeed(double factor)
+        => SetSpeed(Math.Abs(_sim.Time.SpeedMultiplier) * factor);
+
+    /// <summary>Fixa o módulo da velocidade, preservando o sentido.</summary>
+    public void SetSpeed(double magnitude)
+    {
+        var clamped = Math.Clamp(
+            Math.Abs(magnitude), MinSpeedMultiplier, MaxSpeedMultiplier);
+
+        _sim.Time.SpeedMultiplier = _sim.Time.SpeedMultiplier < 0.0 ? -clamped : clamped;
+    }
+
+    /// <summary>
+    /// Inverte o sentido do tempo. Sai de graça do invariante 4: como o estado é função
+    /// pura da data, andar para trás é só diminuir a data.
+    /// </summary>
+    public void ReverseTime() => _sim.Time.SpeedMultiplier = -_sim.Time.SpeedMultiplier;
+
+    public void ResetToEpoch() => _sim.Time.ResetToEpoch();
+
+    public void JumpTo(DateTime utc) => _sim.Time.JumpTo(utc);
+
+    /// <summary>
+    /// Retrato do corpo no instante corrente, montado por consulta ao motor. Cada
+    /// chamada devolve valores novos: quem exibe não guarda nada.
+    /// </summary>
+    public BodyReport ReportFor(string bodyId)
+        => BodyReport.For(_sim, bodyId, _sim.Time.JulianDate);
 
     /// <summary>
     /// Corpo mais próximo de um ponto do mundo, dentro do raio informado. Devolve nulo se
@@ -199,7 +251,7 @@ public partial class SimBridge : Node2D
                 Name = $"{body.Id}_orbit",
                 BodyId = body.Id,
                 ParentBodyId = body.ParentId!,
-                LineColor = ToGodotColor(body.ColorRgb) with { A = 0.35f },
+                LineColor = BodyPalette.Of(body.ColorRgb) with { A = 0.35f },
             };
 
             AddChild(orbit);
@@ -212,7 +264,7 @@ public partial class SimBridge : Node2D
             {
                 Name = body.Id,
                 BodyId = body.Id,
-                BodyColor = ToGodotColor(body.ColorRgb),
+                BodyColor = BodyPalette.Of(body.ColorRgb),
                 DisplayRadius = (float)ScaleMap.BodyRadiusPixels(body.RadiusKm),
             };
 
@@ -224,24 +276,41 @@ public partial class SimBridge : Node2D
         AddChild(camera);
         camera.Attach(this);
 
-        var labels = new BodyLabels { Name = "BodyLabels" };
+        // A ponte é quem monta a cena, e por isso é quem sabe ao mesmo tempo que existem
+        // painéis e que existem rótulos. Nenhum dos dois lados precisa saber do outro.
+        var labels = new BodyLabels
+        {
+            Name = "BodyLabels",
+            ReservedLeft = Panels.ReservedLeft,
+            ReservedRight = Panels.ReservedRight,
+            ReservedBottom = Panels.ReservedBottom,
+        };
+
         AddChild(labels);
         labels.Attach(this);
 
         var controls = new TimeControls { Name = "TimeControls" };
         AddChild(controls);
         controls.Attach(this);
+
+        var tree = new SystemTree { Name = "SystemTree" };
+        AddChild(tree);
+        tree.Attach(this);
+
+        var inspector = new InspectorPanel { Name = "InspectorPanel" };
+        AddChild(inspector);
+        inspector.Attach(this);
     }
 
     private void OnSystemUpdated(SystemStateSnapshot snapshot)
     {
         _projector.Project(snapshot, _parents);
 
-        Rig.Advance(
+        _rig.Advance(
             _frameDelta,
-            Rig.AnchorBodyId is { } anchor ? _projector.PositionOf(anchor) : Vector3D.Zero);
+            _rig.AnchorBodyId is { } anchor ? _projector.PositionOf(anchor) : Vector3D.Zero);
 
-        _transformer.FocusPixels = Rig.FocusPixels;
+        _transformer.FocusPixels = _rig.FocusPixels;
 
         for (var index = 0; index < snapshot.Bodies.Count; index++)
         {
@@ -252,9 +321,4 @@ public partial class SimBridge : Node2D
         FrameReady?.Invoke(
             new RenderFrame(snapshot.JulianDate, _screenPositions, ScaleMap.Revision));
     }
-
-    private static Color ToGodotColor(uint rgb) => new(
-        ((rgb >> 16) & 0xFF) / 255.0f,
-        ((rgb >> 8) & 0xFF) / 255.0f,
-        (rgb & 0xFF) / 255.0f);
 }

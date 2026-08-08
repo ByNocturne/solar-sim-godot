@@ -23,11 +23,23 @@ public partial class BodyLabels : CanvasLayer
     private SimBridge? _bridge;
     private bool _visible = true;
 
+    /// <summary>
+    /// Faixas da tela reservadas pela interface, em pixels. Um rótulo que não caiba
+    /// inteiro fora delas é descartado: metade de um nome atrás de um painel é pior que
+    /// nome nenhum. Quem monta a cena informa os valores, para que este nó continue sem
+    /// saber que existem painéis.
+    /// </summary>
+    public float ReservedLeft { get; set; }
+
+    public float ReservedRight { get; set; }
+
+    public float ReservedBottom { get; set; }
+
     public void Attach(SimBridge bridge)
     {
         _bridge = bridge;
 
-        foreach (var body in bridge.Sim.Bodies)
+        foreach (var body in bridge.Bodies)
         {
             var label = new Label
             {
@@ -36,7 +48,7 @@ public partial class BodyLabels : CanvasLayer
             };
 
             label.AddThemeFontSizeOverride("font_size", FontSize);
-            label.AddThemeColorOverride("font_color", ToGodotColor(body.ColorRgb));
+            label.AddThemeColorOverride("font_color", BodyPalette.Of(body.ColorRgb));
 
             // Contorno preto: sem ele o texto some quando passa por cima de uma órbita
             // ou de outro corpo.
@@ -76,7 +88,7 @@ public partial class BodyLabels : CanvasLayer
     {
         var canvas = GetViewport().GetCanvasTransform();
         var zoom = canvas.Scale.X;
-        var screen = GetViewport().GetVisibleRect();
+        var screen = FreeArea(GetViewport().GetVisibleRect());
 
         // Quem já foi desenhado reserva o seu espaço. A ordem de avaliação coloca o pai
         // antes do filho, então em um aglomerado o planeta ganha do satélite — que é a
@@ -98,7 +110,7 @@ public partial class BodyLabels : CanvasLayer
 
             var box = new Rect2(position, size);
 
-            if (!screen.Intersects(box) || taken.Any(other => other.Intersects(box)))
+            if (!screen.Encloses(box) || taken.Any(other => other.Intersects(box)))
             {
                 continue;
             }
@@ -109,10 +121,9 @@ public partial class BodyLabels : CanvasLayer
         }
     }
 
-    private static Color ToGodotColor(uint rgb) => new(
-        ((rgb >> 16) & 0xFF) / 255.0f,
-        ((rgb >> 8) & 0xFF) / 255.0f,
-        (rgb & 0xFF) / 255.0f);
+    private Rect2 FreeArea(Rect2 screen) => new(
+        screen.Position + new Vector2(ReservedLeft, 0.0f),
+        screen.Size - new Vector2(ReservedLeft + ReservedRight, ReservedBottom));
 
     private sealed record Entry(string BodyId, Label Label, float RadiusPixels);
 }

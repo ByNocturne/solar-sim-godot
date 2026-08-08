@@ -10,17 +10,20 @@ estado como tipo de primeira classe e suporte planejado a órbitas abertas.
 
 ## Estado
 
-**Marcos M0 a M4 concluídos**, com a confirmação visual do M4 pendente. O simulador carrega
+**Marcos M0 a M5 concluídos.** O simulador carrega
 o Sistema Solar de um arquivo JSON — Sol, oito planetas, a Lua, as galileanas e Titã —
 propaga cada corpo em torno do seu e desenha as órbitas, com a câmera ancorável em
 qualquer corpo. O motor está validado contra as efemérides DE441 do JPL Horizons: erro
-máximo de 0,0132% na distância radial ao longo de 26 anos simulados. O próximo passo é o
-M5, a interface. O plano está em [ROADMAP.md](ROADMAP.md), dividido em oito marcos.
+máximo de 0,0132% na distância radial ao longo de 26 anos simulados. A interface tem
+árvore do sistema, barra de tempo com salto para uma data arbitrária e inspetor com os
+elementos orbitais do corpo ancorado. O próximo passo é o M6, a decisão entre 2D e 3D. O
+plano está em [ROADMAP.md](ROADMAP.md), dividido em oito marcos.
 
 Controles: espaço pausa, setas ajustam a velocidade do tempo, R volta para J2000, Tab e
 Shift+Tab ancoram a câmera no corpo seguinte e no anterior, um clique ancora no corpo
 apontado, L alterna entre escala logarítmica e linear, N mostra ou esconde os nomes, Home
-devolve a vista inicial, a roda dá zoom e o botão direito arrasta.
+devolve a vista inicial, H mostra a lista de atalhos, a roda dá zoom e o botão direito
+arrasta.
 
 ## Setup
 
@@ -50,6 +53,12 @@ Engine/         ->  matemática orbital e estado; não conhece o Godot
 `Engine/` é domínio puro: compila e é testado com o Godot desinstalado. Essa separação não
 é cerimônia — é o que permite validar a mecânica orbital contra efemérides reais sem abrir
 o editor, e o que mantém o motor reaproveitável se a camada visual mudar.
+
+`Bridge/SimBridge.cs` é o único nó do Godot que alcança o motor. Os painéis e os nós
+gráficos assinam o evento de snapshot ou chamam comandos e consultas dessa fachada, de
+modo que o número de pontos de contato entre os dois mundos é um. O que o inspetor mostra
+é um valor consultado ao motor e descartado logo depois, e não uma cópia mantida pela
+tela: assim não existe onde um número desatualizado possa sobreviver.
 
 ## Precisão
 

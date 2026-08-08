@@ -15,15 +15,18 @@
     <ProjectReference Include="../Engine/SolarSim.Engine.csproj" />
   </ItemGroup>
 
-  <!-- A matematica de escala e de camera mora em Bridge/, que faz parte do projeto do
-       Godot e portanto nao pode ser referenciado daqui. Estes arquivos sao compilados
-       tambem neste projeto para poderem ser testados. So funciona porque nenhum deles
-       toca no Godot; se algum passar a tocar, este build quebra, o que e o aviso certo. -->
+  <!-- A matematica de escala e de camera, o retrato de corpo e a formatacao moram em
+       Bridge/, que faz parte do projeto do Godot e portanto nao pode ser referenciado
+       daqui. Estes arquivos sao compilados tambem neste projeto para poderem ser
+       testados. So funciona porque nenhum deles toca no Godot; se algum passar a tocar,
+       este build quebra, o que e o aviso certo. -->
   <ItemGroup>
     <Compile Include="../Bridge/ScaleMapper.cs" Link="Bridge/ScaleMapper.cs" />
     <Compile Include="../Bridge/ScaleLayout.cs" Link="Bridge/ScaleLayout.cs" />
     <Compile Include="../Bridge/SystemProjector.cs" Link="Bridge/SystemProjector.cs" />
     <Compile Include="../Bridge/CameraRig.cs" Link="Bridge/CameraRig.cs" />
+    <Compile Include="../Bridge/BodyReport.cs" Link="Bridge/BodyReport.cs" />
+    <Compile Include="../Bridge/DisplayFormat.cs" Link="Bridge/DisplayFormat.cs" />
   </ItemGroup>
 
   <ItemGroup>

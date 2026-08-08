@@ -212,7 +212,7 @@ motor é confiável o suficiente para construir em cima.
       do plano orbital, e não apenas raio e anomalia
 - [x] Marte acrescentado ao repositório, necessário para a comparação de referência
 - [x] Contagem de iterações exposta pelo solver, para o critério ser verificado
-- [x] `SimEngine.StateAt`, `ElementsOf` e `ParentMuOf` para consulta de estado
+- [x] `SimEngine.StateAt`, `ElementsOf` e `GravitationalParameterOf` para consulta de estado
 - [x] Testes de invariantes: energia orbital específica, momento angular e a relação
       entre energia e semi-eixo maior
 - [x] Regressão contra efemérides geométricas do JPL Horizons (solução DE441)
@@ -370,14 +370,76 @@ centésimo de pixel sobre a posição projetada dele ainda sobrevive à convers�
 
 ## M5 — Interface
 
-- [ ] `UI/TimeControls.cs` — play/pause, multiplicador (1x, 1000x, 100000x), data legível,
-      entrada de data arbitrária, retorno a J2000, tempo reverso
-- [ ] `UI/SystemTree.cs` — árvore hierárquica navegável; selecionar ancora a câmera
-- [ ] `UI/InspectorPanel.cs` — elementos orbitais, distância ao pai e ao Sol, velocidade
+- [x] `UI/TimeControls.cs` — play/pause, multiplicador (1x, 1000x, 100000x, 10⁷x), data
+      legível, entrada de data arbitrária, retorno a J2000, tempo reverso
+- [x] `UI/SystemTree.cs` — árvore hierárquica navegável; selecionar ancora a câmera
+- [x] `UI/InspectorPanel.cs` — elementos orbitais, distância ao pai e ao Sol, velocidade
       instantânea, período, dados físicos
+- [x] `Bridge/BodyReport.cs` — o retrato consultado ao motor que alimenta o inspetor
+- [x] `Bridge/DisplayFormat.cs` — número do domínio em texto, com escolha de unidade
+- [x] `UI/Panels.cs` — fora do plano original: a caixa, os rótulos e os botões comuns aos
+      três painéis
 
-**Pronto quando:** todo dado exibido vem do snapshot ou de consulta ao motor. Nenhum
-componente de UI mantém cópia própria de estado da simulação.
+### Decisões e desvios
+
+**A UI conversa com um `SimBridge` de fachada, e não com o motor.** O `SimBridge` deixou
+de expor a propriedade `Sim` e passou a oferecer os comandos e as consultas que a
+interface precisa — pausar, mudar a velocidade, inverter o tempo, saltar para uma data,
+ancorar, pedir o retrato de um corpo. Com `Sim` público, cada painel novo teria a
+tentação de chamar o motor direto, e o número de pontos de acoplamento entre os dois
+mundos deixaria de ser um. `CameraRig` seguiu o mesmo caminho e virou campo privado.
+
+**O que o inspetor mostra é um valor, não um objeto observável.** `BodyReport` é montado
+por consulta ao motor a cada atualização e descartado em seguida. É a forma mais direta de
+garantir o critério de pronto: não existe onde guardar um número desatualizado. O painel
+possui apenas os rótulos em que escreve.
+
+**O retrato e a formatação moram na Bridge, e por isso são testados.** Ambos são conversão
+de unidade na fronteira, que é a definição da camada, e nenhum dos dois toca no Godot —
+então entram no projeto de testes pelo mesmo `Compile Include` que já trazia a matemática
+de escala. Dezessete testes novos cobrem a separação entre velocidade local e global, o
+acordo entre a anomalia verdadeira exibida e a equação da cônica, e a independência da
+formatação em relação à cultura do sistema.
+
+**O inspetor atualiza a 10 Hz, não a cada quadro.** A 60 Hz os dígitos finais piscam
+rápido demais para serem lidos, e reconsultar o motor a cada quadro não acrescenta
+informação nenhuma.
+
+**A velocidade tem módulo e sentido separados.** Acelerar com o tempo invertido acelera
+para trás, em vez de voltar a andar para a frente. O módulo fica preso entre 1x e 10⁹x, e
+inverter é só trocar o sinal — o que sai de graça do invariante 4.
+
+**A ajuda de teclado saiu da tela e foi para trás da tecla H.** Ela ocupava oito linhas
+permanentes sobre o sistema; agora a barra inferior mostra só o estado do relógio, a
+escala, a âncora e a taxa de quadros.
+
+**As linhas relativas ao pai desaparecem quando o pai é a raiz.** Para um planeta, a
+distância ao pai e a distância ao Sol são o mesmo número, e mostrar as duas linhas parecia
+defeito. Elas só têm o que dizer para um satélite: a Lua faz 1,011 km/s em torno da Terra
+enquanto faz 30,742 km/s em torno do Sol. Esconder as duas células fecha a linha de fato,
+porque um contêiner do Godot só distribui espaço entre os filhos visíveis.
+
+**Os rótulos dos corpos passaram a respeitar as faixas ocupadas pela interface.** Com os
+painéis nas bordas, o nome de Netuno aparecia metade escondido atrás da barra de tempo.
+`BodyLabels` agora exige que o rótulo caiba inteiro na área livre, em vez de aceitar
+qualquer sobreposição com a tela. Quem informa as faixas é o `SimBridge`, que monta a
+cena e é o único que sabe ao mesmo tempo da existência dos painéis e dos rótulos — assim
+`Render/` continua sem depender de `UI/`.
+
+### Confirmação visual
+
+Verificado com quadros renderizados pelo modo Movie Maker do Godot, a 1152x648, com a
+câmera ancorada no Sol, em Júpiter e na Lua. Os números do inspetor conferem com o que os
+marcos anteriores mediram: para a Lua, semi-eixo de 384.748 km, período de 27,32 dias e
+periápside e apoápside de 363.625 km e 405.871 km — os mesmos extremos do teste de um
+século do M3. A árvore acompanha a âncora, e o corpo ancorado cai no centro da tela.
+
+**Pronto quando:** ~~todo dado exibido vem do snapshot ou de consulta ao motor. Nenhum
+componente de UI mantém cópia própria de estado da simulação.~~ **Concluído:** build sem
+avisos, 131 testes passando — sendo 17 novos — e execução com código de saída 0 sem
+nenhum erro. Nenhum dos três painéis declara campo de estado da simulação, só referências
+aos rótulos em que escreve, e o compilador ajuda a manter isso: o motor não é mais
+alcançável a partir de `UI/`.
 
 ---
 
@@ -458,18 +520,22 @@ solar-sim-godot/
 │   │   └── SystemDataException.cs
 │   └── SimEngine.cs
 ├── Bridge/                          # CAMADA DE ADAPTAÇÃO
-│   ├── SimBridge.cs
+│   ├── SimBridge.cs                 # fachada: único caminho da UI até o motor
 │   ├── ViewportTransformer.cs       # double para float, relativo ao foco
 │   ├── ScaleMapper.cs               # curva perceptual e transição de modo
 │   ├── ScaleLayout.cs               # espaço de tela de cada nível da hierarquia
 │   ├── SystemProjector.cs           # composição das posições em pixels
-│   └── CameraRig.cs                 # âncora, pan e transição entre alvos
+│   ├── CameraRig.cs                 # âncora, pan e transição entre alvos
+│   ├── BodyReport.cs                # retrato de um corpo, consultado ao motor (M5)
+│   ├── DisplayFormat.cs             # número em texto, com escolha de unidade (M5)
+│   └── BodyPalette.cs               # 0xRRGGBB para Color, em um lugar só
 ├── Render/                          # andaime 2D até o M6
 │   ├── CelestialBodyNode.cs
 │   ├── OrbitLineRenderer.cs
 │   ├── BodyLabels.cs
 │   └── SpaceCamera.cs
 ├── UI/
+│   ├── Panels.cs                    # caixa, rótulos e botões comuns
 │   ├── InspectorPanel.cs
 │   ├── TimeControls.cs
 │   └── SystemTree.cs
@@ -506,6 +572,8 @@ Fora do escopo dos oito marcos, em ordem aproximada de valor:
 - Asteroides e cometas
 - Rotação axial, obliquidade e fases de iluminação
 - Janelas de transferência e planejamento de manobras
+- Constelações como pano de fundo, o que exige um catálogo de estrelas e a projeção da
+  esfera celeste
 
 ---
 
