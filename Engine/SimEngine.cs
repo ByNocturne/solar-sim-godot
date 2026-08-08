@@ -10,11 +10,14 @@ namespace SolarSim.Engine;
 /// </summary>
 public sealed class SimEngine
 {
-    private readonly IReadOnlyList<CelestialBodyData> _bodies;
-    private readonly Dictionary<string, CelestialBodyData> _byId;
+    private readonly BodyHierarchy _hierarchy;
 
-    // Reaproveitado a cada quadro: o caminho de propagação roda a 60 Hz e não deve
+    // Parâmetro gravitacional efetivo de cada órbita, indexado como a hierarquia.
+    private readonly double[] _mu;
+
+    // Reaproveitados a cada quadro: o caminho de propagação roda a 60 Hz e não deve
     // gerar lixo para o coletor.
+    private readonly StateVector[] _globals;
     private readonly BodyState[] _states;
 
     public SimEngine(IBodyRepository repository, TimeEngine? time = null)
@@ -22,16 +25,24 @@ public sealed class SimEngine
         ArgumentNullException.ThrowIfNull(repository);
 
         Time = time ?? new TimeEngine();
-        _bodies = repository.LoadBodies();
-        _byId = _bodies.ToDictionary(body => body.Id, StringComparer.Ordinal);
-        _states = new BodyState[_bodies.Count];
+        _hierarchy = BodyHierarchy.Create(repository.LoadBodies());
+
+        _mu = new double[_hierarchy.Count];
+        for (var index = 0; index < _hierarchy.Count; index++)
+        {
+            _mu[index] = EffectiveMu(index);
+        }
+
+        _globals = new StateVector[_hierarchy.Count];
+        _states = new BodyState[_hierarchy.Count];
 
         Publish();
     }
 
     public TimeEngine Time { get; }
 
-    public IReadOnlyList<CelestialBodyData> Bodies => _bodies;
+    /// <summary>Corpos em ordem de avaliação: o pai sempre antes do filho.</summary>
+    public IReadOnlyList<CelestialBodyData> Bodies => _hierarchy.InEvaluationOrder;
 
     public event Action<SystemStateSnapshot>? SystemUpdated;
 
@@ -48,36 +59,45 @@ public sealed class SimEngine
     public Vector3D PositionAt(string bodyId, double julianDate)
         => StateAt(bodyId, julianDate).PositionKm;
 
-    /// <summary>Posição e velocidade de um corpo em um instante arbitrário.</summary>
+    /// <summary>
+    /// Posição e velocidade no referencial global, com a cadeia de pais já composta:
+    /// a Lua carrega o movimento da Terra em torno do Sol.
+    /// </summary>
     public StateVector StateAt(string bodyId, double julianDate)
-    {
-        if (!_byId.TryGetValue(bodyId, out var body))
-        {
-            throw new KeyNotFoundException($"Corpo desconhecido: '{bodyId}'.");
-        }
+        => GlobalStateOf(_hierarchy.IndexOf(bodyId), julianDate - AstroConstants.J2000);
 
-        return StateOf(body, julianDate - AstroConstants.J2000);
-    }
+    /// <summary>
+    /// Posição e velocidade relativas ao corpo pai, que é o referencial em que os
+    /// elementos orbitais são definidos. Para a raiz, o estado é nulo.
+    /// </summary>
+    public StateVector LocalStateAt(string bodyId, double julianDate)
+        => LocalStateOf(_hierarchy.IndexOf(bodyId), julianDate - AstroConstants.J2000);
 
     /// <summary>Elementos orbitais de um corpo, ou nulo se ele for a raiz.</summary>
-    public OrbitalElements? ElementsOf(string bodyId)
-        => _byId.TryGetValue(bodyId, out var body)
-            ? body.Elements
-            : throw new KeyNotFoundException($"Corpo desconhecido: '{bodyId}'.");
+    public OrbitalElements? ElementsOf(string bodyId) => _hierarchy.Get(bodyId).Elements;
 
-    /// <summary>GM do corpo pai, usado para propagar a órbita do filho.</summary>
-    public double ParentMuOf(string bodyId)
-    {
-        if (!_byId.TryGetValue(bodyId, out var body))
-        {
-            throw new KeyNotFoundException($"Corpo desconhecido: '{bodyId}'.");
-        }
+    /// <summary>
+    /// Parâmetro gravitacional que rege a órbita deste corpo, em km³/s². Vale zero para
+    /// a raiz.
+    /// </summary>
+    public double GravitationalParameterOf(string bodyId)
+        => _mu[_hierarchy.IndexOf(bodyId)];
 
-        return body.ParentId is not null && _byId.TryGetValue(body.ParentId, out var parent)
-            ? parent.MuKm3S2
+    /// <summary>
+    /// A equação do movimento relativo de dois corpos usa a soma dos dois parâmetros
+    /// gravitacionais, não só o do corpo central. Para um planeta em torno do Sol a
+    /// diferença é imperceptível; para a Lua em torno da Terra vale 1,2%, o suficiente
+    /// para deslocar o mês sideral em quatro horas.
+    /// </summary>
+    private double EffectiveMu(int index)
+        => _hierarchy.ParentOf(index) is { } parent
+            ? parent.MuKm3S2 + _hierarchy[index].MuKm3S2
             : 0.0;
-    }
 
+    /// <summary>
+    /// Uma passada só, na ordem de avaliação: quando um corpo é processado, o estado
+    /// global do pai dele já está pronto na mesma tabela.
+    /// </summary>
     private void Publish()
     {
         if (SystemUpdated is null)
@@ -87,31 +107,36 @@ public sealed class SimEngine
 
         var daysSinceEpoch = Time.DaysSinceEpoch;
 
-        for (var index = 0; index < _bodies.Count; index++)
+        for (var index = 0; index < _hierarchy.Count; index++)
         {
-            var body = _bodies[index];
-            _states[index] = new BodyState(body.Id, StateOf(body, daysSinceEpoch).PositionKm);
+            var parentIndex = _hierarchy.ParentIndices[index];
+            var local = LocalStateOf(index, daysSinceEpoch);
+
+            _globals[index] = parentIndex < 0 ? local : _globals[parentIndex] + local;
+
+            _states[index] = new BodyState(
+                _hierarchy[index].Id, _globals[index].PositionKm, local.PositionKm);
         }
 
         SystemUpdated.Invoke(new SystemStateSnapshot(Time.JulianDate, _states));
     }
 
     /// <summary>
-    /// No M1 a lista é plana: a raiz fica na origem e todo o resto orbita diretamente
-    /// em torno dela. A composição hierárquica recursiva entra no M3.
+    /// P_global(A) = P_global(Pai(A)) + P_local(A). Fora do laço de quadro a composição
+    /// é recursiva, porque a profundidade da árvore é pequena e a clareza compensa.
     /// </summary>
-    private StateVector StateOf(CelestialBodyData body, double daysSinceEpoch)
+    private StateVector GlobalStateOf(int index, double daysSinceEpoch)
     {
-        if (body.Elements is not { } elements || body.ParentId is null)
-        {
-            return default;
-        }
+        var local = LocalStateOf(index, daysSinceEpoch);
+        var parentIndex = _hierarchy.ParentIndices[index];
 
-        var parentMu = _byId.TryGetValue(body.ParentId, out var parent)
-            ? parent.MuKm3S2
-            : throw new KeyNotFoundException(
-                $"Corpo '{body.Id}' referencia o pai inexistente '{body.ParentId}'.");
-
-        return KeplerPropagator.StateAt(elements, parentMu, daysSinceEpoch);
+        return parentIndex < 0
+            ? local
+            : GlobalStateOf(parentIndex, daysSinceEpoch) + local;
     }
+
+    private StateVector LocalStateOf(int index, double daysSinceEpoch)
+        => _hierarchy[index].Elements is { } elements
+            ? KeplerPropagator.StateAt(elements, _mu[index], daysSinceEpoch)
+            : default;
 }

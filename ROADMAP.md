@@ -224,9 +224,9 @@ Comparação com o JPL Horizons para o baricentro Terra-Lua e o de Marte, em 200
 
 | Grandeza | Erro máximo observado | Critério |
 | --- | --- | --- |
-| Distância radial | 0,0133% | 0,1% |
-| Direção do vetor posição | 0,0937° | — |
-| Velocidade | 0,0121% | — |
+| Distância radial | 0,0132% | 0,1% |
+| Direção do vetor posição | 0,0928° | — |
+| Velocidade | 0,0120% | — |
 
 O erro cresce com a distância à época, como esperado de um modelo de elementos fixos: a
 Terra sai de 0,0003% em J2000 para 0,0041% em 2026. O pior caso é sempre Marte em 2026.
@@ -240,9 +240,12 @@ ordem de grandeza.
 **Pronto quando:** ~~posições de Terra e Marte conferem com o JPL Horizons em três datas
 distintas, com erro relativo abaixo de 0,1% na distância radial, e o solver converge em
 menos de dez iterações para todo `e < 0.95`.~~ **Concluído:** erro radial máximo de
-0,0133%, sete vezes melhor que o critério. A convergência em menos de dez iterações é
+0,0132%, sete vezes melhor que o critério. A convergência em menos de dez iterações é
 verificada para `e` de 0 a 0,94, varrendo 720 valores de anomalia média em cada
 excentricidade. 41 testes passando.
+
+Os números acima são os medidos hoje. Eram 0,0133%, 0,0937° e 0,0121% no fechamento do
+M2; a diferença veio do parâmetro gravitacional efetivo adotado no M3.
 
 ---
 
@@ -250,20 +253,59 @@ excentricidade. 41 testes passando.
 
 Objetivo: sair de dois corpos hardcoded para o Sistema Solar real, com luas.
 
-- [ ] Definir o schema de `Data/solar_system_j2000.json`, com unidades explícitas no
+- [x] Definir o schema de `Data/solar_system_j2000.json`, com unidades explícitas no
       próprio arquivo
-- [ ] Popular Sol, oito planetas, Lua, galileanas e Titã
-- [ ] `Engine/Data/DataLoader.cs` e `JsonBodyRepository` implementando `IBodyRepository`,
+- [x] Popular Sol, oito planetas, Lua, galileanas e Titã
+- [x] `Engine/Data/DataLoader.cs` e `JsonBodyRepository` implementando `IBodyRepository`,
       convertendo graus para radianos na carga
-- [ ] Validação na carga: corpo pai inexistente, ciclo na hierarquia, `a <= 0`, campos
+- [x] Validação na carga: corpo pai inexistente, ciclo na hierarquia, `a <= 0`, campos
       ausentes — com mensagem de erro que diga qual corpo e qual campo
-- [ ] Ordem de avaliação garantindo pai antes de filho
-- [ ] Composição recursiva `P_global(A) = P_global(Pai(A)) + P_local(A)`
-- [ ] Remover a implementação hardcoded
+- [x] Ordem de avaliação garantindo pai antes de filho
+- [x] Composição recursiva `P_global(A) = P_global(Pai(A)) + P_local(A)`
+- [x] Remover a implementação hardcoded
 
-**Pronto quando:** a distância Terra–Lua permanece dentro da faixa real (363.000 a 406.000
+### O schema
+
+A unidade vive no nome do campo, e não em um cabeçalho distante: `radiusKm`,
+`inclinationDeg`, `muKm3S2`. O semi-eixo aceita duas grafias, `semiMajorAxisAu` e
+`semiMajorAxisKm`, porque as fontes usam escalas diferentes para planetas e satélites;
+declarar as duas ao mesmo tempo é erro. O documento também traz `epoch`, conferido contra
+J2000.0 na carga, e campos de documentação (`frame`, `sources`, `notes`, `note`) que o
+motor lê e ignora — existem para quem abre o arquivo.
+
+### Decisões e desvios
+
+**O parâmetro gravitacional passou a ser o efetivo, `mu(pai) + mu(corpo)`.** É a forma
+correta da equação do movimento relativo de dois corpos. Para um planeta em torno do Sol a
+correção é imperceptível; para a Lua vale 1,2% e é a diferença entre um mês sideral de
+27,45 e um de 27,32 dias. O efeito colateral foi melhorar de leve os números do M2.
+
+**A hierarquia virou um objeto próprio, `BodyHierarchy`.** A validação de pai inexistente,
+ciclo e raiz única não é específica do JSON: vale para qualquer implementação de
+`IBodyRepository`. Ficando separada, o `DataLoader` a aplica na carga e o `SimEngine` a
+aplica sobre o que quer que receba, com uma implementação só.
+
+**Campo com nome desconhecido é erro, não é ignorado.** `raioKm` em vez de `radiusKm`
+seria aceito em silêncio pelo comportamento padrão do desserializador, e o corpo apareceria
+com raio errado sem nenhum aviso.
+
+**Satélites usam a eclíptica como plano de referência.** O correto seria o equador do
+planeta, que exige modelar obliquidade. A aproximação afeta a orientação do plano orbital,
+não o tamanho nem a forma da órbita — que é justamente o que o critério de pronto mede. A
+fase de Titã não foi validada contra efemérides, e o arquivo diz isso.
+
+**A leitura do arquivo ficou na Bridge.** No jogo exportado os dados vivem dentro do pacote
+e só o `FileAccess` do Godot sabe abri-los. O motor recebe o texto já lido, então continua
+sem saber que o Godot existe.
+
+**Pronto quando:** ~~a distância Terra–Lua permanece dentro da faixa real (363.000 a 406.000
 km) ao longo de um século simulado. Esse teste é o que prova que a composição hierárquica
-não acumula erro.
+não acumula erro.~~ **Concluído:** a distância varia entre 363.625 km e 405.871 km em
+73.051 amostras cobrindo 36.525 dias — dentro da faixa, e encostando no perigeu e no
+apogeu previstos pelos elementos a menos de um quilômetro no fim do século. As
+galileanas acompanham Júpiter com a razão de períodos 1:2:4 da ressonância de Laplace, e
+os oito planetas ficam entre periélio e afélio ao longo do mesmo século. 80 testes
+passando, sendo 39 novos.
 
 ---
 
@@ -272,17 +314,57 @@ não acumula erro.
 Objetivo: tornar o Sistema Solar navegável, que é o problema visual central — em escala
 real, os planetas são invisíveis.
 
-- [ ] Modo logarítmico perceptual:
+- [x] Modo logarítmico perceptual:
       `r_vis = ln(1 + α·r) / ln(1 + α·r_max) · R_tela`
-- [ ] Escala independente para o raio dos corpos, desacoplada da escala de distância
-- [ ] Transição suave entre os modos linear e logarítmico
-- [ ] `Render/SpaceCamera.cs` completo: zoom exponencial, pan, ancoragem em um corpo,
+- [x] Escala independente para o raio dos corpos, desacoplada da escala de distância
+- [x] Transição suave entre os modos linear e logarítmico
+- [x] `Render/SpaceCamera.cs` completo: zoom exponencial, pan, ancoragem em um corpo,
       transição suave ao trocar de alvo
-- [ ] `Render/OrbitLineRenderer.cs`: amostragem de um período completo via propagador,
+- [x] `Render/OrbitLineRenderer.cs`: amostragem de um período completo via propagador,
       com cache invalidado apenas por mudança de escala ou de câmera
+- [x] `Render/BodyLabels.cs` — fora do plano original, pedido depois de rodar: sem os
+      nomes, quinze pontos coloridos não dizem qual é qual
 
-**Pronto quando:** com a câmera ancorada em Netuno, não há trepidação visual em nenhum
-nível de zoom, e o Sistema Solar completo com órbitas se mantém acima de 60 fps.
+### Decisões e desvios
+
+**A escala é hierárquica, e não um mapa único sobre o raio heliocêntrico.** A fórmula do
+plano, aplicada à distância até o Sol, coloca a Lua e a Terra no mesmo pixel: a órbita
+lunar é 390 vezes menor que a terrestre, e a de Io é 300 vezes menor que a de Júpiter.
+Cada pai passou a ter o seu próprio mapa, dimensionado pela maior órbita que abriga, e a
+posição projetada de um corpo é a do pai mais o deslocamento local já escalado. O `α` é
+declarado como fator adimensional de compressão, e não em unidades de distância, para que
+a mesma curva sirva ao Sistema Solar e ao sistema de Júpiter.
+
+**O snapshot passou a publicar a posição local junto da global.** É o dado que a escala
+hierárquica consome, e o motor já o tinha em mãos ao compor a posição global.
+
+**A câmera olha para o espaço projetado, não para quilômetros.** Como o mapa perceptual é
+não linear em torno do Sol, escalar primeiro e subtrair o foco depois é a única ordem que
+funciona. O invariante 2 continua valendo, e com folga: a subtração acontece em `double` e
+o `float` só aparece no fim, sobre um número que já é pequeno.
+
+**A transição entre alvos tem duração fixa em vez de suavização exponencial.** A
+suavização exponencial nunca alcança o alvo, e com o tempo acelerado isso deixa o corpo
+ancorado tremendo fora do centro — exatamente o defeito que o marco quer eliminar.
+
+**A matemática de escala e de câmera é compilada também pelo projeto de testes.** Ela vive
+em `Bridge/`, que faz parte do projeto do Godot e não pode ser referenciado pelos testes.
+Como nenhum desses quatro arquivos toca no Godot, eles entram no projeto de testes por
+`Compile Include`. Se algum passar a tocar, o build dos testes quebra, que é o aviso certo
+na hora certa.
+
+**Os rótulos ficam em uma camada de tela, não no mundo.** Como nós do mundo, a câmera os
+ampliaria junto com tudo, e o nome de Júpiter ocuparia a tela inteira no zoom máximo. Na
+camada de tela têm sempre o mesmo tamanho, e quem se sobrepõe é descartado na ordem de
+avaliação — o que faz o planeta ganhar do satélite quando o sistema está distante.
+
+**Pronto quando:** ~~com a câmera ancorada em Netuno, não há trepidação visual em nenhum
+nível de zoom, e o Sistema Solar completo com órbitas se mantém acima de 60 fps.~~
+**Concluído:** o desempenho foi confirmado em execução, com o sistema completo e as
+órbitas desenhadas, e nenhuma trepidação foi observada. Numericamente, com a âncora em
+Netuno o corpo ancorado cai exatamente no centro da tela, e um deslocamento de um
+centésimo de pixel sobre a posição projetada dele ainda sobrevive à conversão para
+`float`. 114 testes passando, sendo 34 novos.
 
 ---
 
@@ -369,16 +451,23 @@ solar-sim-godot/
 │   │   ├── StateVector.cs           # novo — posição + velocidade (M7)
 │   │   └── Vector3D.cs
 │   ├── Data/
-│   │   ├── IBodyRepository.cs       # novo — inversão de dependência
-│   │   └── DataLoader.cs
+│   │   ├── IBodyRepository.cs       # inversão de dependência
+│   │   ├── DataLoader.cs            # JSON para unidades internas, com validação
+│   │   ├── JsonBodyRepository.cs
+│   │   ├── BodyHierarchy.cs         # ordem de avaliação e detecção de ciclo
+│   │   └── SystemDataException.cs
 │   └── SimEngine.cs
-├── Bridge/                          # novo — CAMADA DE ADAPTAÇÃO
+├── Bridge/                          # CAMADA DE ADAPTAÇÃO
 │   ├── SimBridge.cs
-│   ├── ViewportTransformer.cs
-│   └── ScaleMapper.cs
+│   ├── ViewportTransformer.cs       # double para float, relativo ao foco
+│   ├── ScaleMapper.cs               # curva perceptual e transição de modo
+│   ├── ScaleLayout.cs               # espaço de tela de cada nível da hierarquia
+│   ├── SystemProjector.cs           # composição das posições em pixels
+│   └── CameraRig.cs                 # âncora, pan e transição entre alvos
 ├── Render/                          # andaime 2D até o M6
 │   ├── CelestialBodyNode.cs
 │   ├── OrbitLineRenderer.cs
+│   ├── BodyLabels.cs
 │   └── SpaceCamera.cs
 ├── UI/
 │   ├── InspectorPanel.cs

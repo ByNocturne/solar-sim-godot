@@ -24,7 +24,7 @@ public sealed class JplHorizonsRegressionTests
 {
     // Limites deliberadamente próximos do erro medido, para que o teste detecte
     // regressão em vez de apenas confirmar a ordem de grandeza. Máximos observados
-    // nas seis referências: 0,0133% no raio, 0,0937 grau na direção e 0,0121% na
+    // nas seis referências: 0,0132% no raio, 0,0928 grau na direção e 0,0120% na
     // velocidade, todos no caso de Marte em 2026, que é o mais distante da época.
     private const double RadialToleranceFraction = 0.0002;
     private const double AngularToleranceDegrees = 0.15;
@@ -55,7 +55,7 @@ public sealed class JplHorizonsRegressionTests
     [Fact]
     public void DistanciaRadialConfereComAsEfemeridesDoJpl()
     {
-        var sim = new SimEngine(new HardcodedBodyRepository());
+        var sim = SolarSystem.NewEngine();
         var relatorio = new StringBuilder();
         var maiorErro = 0.0;
 
@@ -83,7 +83,7 @@ public sealed class JplHorizonsRegressionTests
     [Fact]
     public void DirecaoDoVetorPosicaoConfereComAsEfemeridesDoJpl()
     {
-        var sim = new SimEngine(new HardcodedBodyRepository());
+        var sim = SolarSystem.NewEngine();
         var relatorio = new StringBuilder();
         var maiorDesvioGraus = 0.0;
 
@@ -114,7 +114,7 @@ public sealed class JplHorizonsRegressionTests
     [Fact]
     public void VelocidadeConfereComAsEfemeridesDoJpl()
     {
-        var sim = new SimEngine(new HardcodedBodyRepository());
+        var sim = SolarSystem.NewEngine();
         var relatorio = new StringBuilder();
         var maiorErro = 0.0;
 

@@ -7,21 +7,28 @@ namespace SolarSim.Tests;
 
 /// <summary>
 /// Grandezas que a mecânica kepleriana obriga a permanecer constantes. São o melhor
-/// detector de erro no propagador: não dependem de dados externos e falham diante de
+/// detector de erro no propagador: não dependem de efeméride nenhuma e falham diante de
 /// qualquer inconsistência entre posição e velocidade.
 /// </summary>
+/// <remarks>
+/// As amostras são do estado local, relativo ao pai, que é o referencial em que a órbita
+/// é kepleriana. No referencial global a órbita da Lua não conserva nada, porque a Terra
+/// está acelerando embaixo dela.
+/// </remarks>
 public sealed class OrbitalInvariantTests
 {
     [Theory]
     [InlineData("earth")]
     [InlineData("mars")]
+    [InlineData("moon")]
+    [InlineData("io")]
     public void EnergiaOrbitalEspecificaSeMantemConstante(string bodyId)
     {
-        var sim = new SimEngine(new HardcodedBodyRepository());
-        var parentMu = sim.ParentMuOf(bodyId);
+        var sim = SolarSystem.NewEngine();
+        var mu = sim.GravitationalParameterOf(bodyId);
 
         var energias = Amostrar(sim, bodyId)
-            .Select(estado => estado.SpecificEnergy(parentMu))
+            .Select(estado => estado.SpecificEnergy(mu))
             .ToArray();
 
         var variacao = (energias.Max() - energias.Min()) / Math.Abs(energias[0]);
@@ -32,9 +39,11 @@ public sealed class OrbitalInvariantTests
     [Theory]
     [InlineData("earth")]
     [InlineData("mars")]
+    [InlineData("moon")]
+    [InlineData("io")]
     public void MomentoAngularEspecificoSeMantemConstante(string bodyId)
     {
-        var sim = new SimEngine(new HardcodedBodyRepository());
+        var sim = SolarSystem.NewEngine();
 
         var momentos = Amostrar(sim, bodyId)
             .Select(estado => estado.SpecificAngularMomentum.Magnitude)
@@ -48,17 +57,19 @@ public sealed class OrbitalInvariantTests
     [Theory]
     [InlineData("earth")]
     [InlineData("mars")]
+    [InlineData("moon")]
+    [InlineData("io")]
     public void EnergiaCorrespondeAoSemiEixoMaior(string bodyId)
     {
-        var sim = new SimEngine(new HardcodedBodyRepository());
-        var parentMu = sim.ParentMuOf(bodyId);
+        var sim = SolarSystem.NewEngine();
+        var mu = sim.GravitationalParameterOf(bodyId);
         var elementos = sim.ElementsOf(bodyId)!.Value;
 
-        var estado = sim.StateAt(bodyId, AstroConstants.J2000 + 137.0);
+        var estado = sim.LocalStateAt(bodyId, AstroConstants.J2000 + 137.0);
 
         // Para uma órbita fechada, a energia específica vale -mu / (2a).
-        var esperado = -parentMu / (2.0 * elementos.SemiMajorAxisKm);
-        var obtido = estado.SpecificEnergy(parentMu);
+        var esperado = -mu / (2.0 * elementos.SemiMajorAxisKm);
+        var obtido = estado.SpecificEnergy(mu);
 
         Assert.Equal(esperado, obtido, tolerance: Math.Abs(esperado) * 1e-12);
     }
@@ -99,9 +110,9 @@ public sealed class OrbitalInvariantTests
     [Fact]
     public void VelocidadeEPerpendicularAoRaioNosApsides()
     {
-        var sim = new SimEngine(new HardcodedBodyRepository());
+        var sim = SolarSystem.NewEngine();
         var elementos = sim.ElementsOf("mars")!.Value;
-        var parentMu = sim.ParentMuOf("mars");
+        var parentMu = sim.GravitationalParameterOf("mars");
 
         var periodo = KeplerPropagator.OrbitalPeriodDays(elementos.SemiMajorAxisKm, parentMu);
 
@@ -123,11 +134,11 @@ public sealed class OrbitalInvariantTests
     {
         var elementos = sim.ElementsOf(bodyId)!.Value;
         var periodo = KeplerPropagator.OrbitalPeriodDays(
-            elementos.SemiMajorAxisKm, sim.ParentMuOf(bodyId));
+            elementos.SemiMajorAxisKm, sim.GravitationalParameterOf(bodyId));
 
         for (var passo = 0; passo < 64; passo++)
         {
-            yield return sim.StateAt(bodyId, AstroConstants.J2000 + periodo * passo / 64.0);
+            yield return sim.LocalStateAt(bodyId, AstroConstants.J2000 + periodo * passo / 64.0);
         }
     }
 }

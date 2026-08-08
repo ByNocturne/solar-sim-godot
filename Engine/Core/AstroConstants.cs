@@ -16,14 +16,11 @@ public static class AstroConstants
     /// <summary>Unidade astronômica em km, conforme definição da IAU de 2012.</summary>
     public const double AstronomicalUnitKm = 149_597_870.7;
 
-    /// <summary>GM do Sol.</summary>
+    /// <summary>
+    /// GM do Sol. O GM dos demais corpos vem do arquivo de dados; este fica aqui por ser
+    /// a referência do sistema e por permitir exercitar o propagador sem carregar dados.
+    /// </summary>
     public const double SunMuKm3S2 = 1.327_124_400_18e11;
-
-    /// <summary>GM da Terra.</summary>
-    public const double EarthMuKm3S2 = 3.986_004_418e5;
-
-    /// <summary>GM de Marte.</summary>
-    public const double MarsMuKm3S2 = 4.282_837e4;
 
     public static double DegreesToRadians(double degrees) => degrees * Math.PI / 180.0;
 

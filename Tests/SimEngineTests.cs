@@ -10,7 +10,7 @@ public sealed class SimEngineTests
     [Fact]
     public void RaizPermaneceNaOrigem()
     {
-        var sim = new SimEngine(new HardcodedBodyRepository());
+        var sim = SolarSystem.NewEngine();
 
         Assert.Equal(Vector3D.Zero, sim.PositionAt("sun", AstroConstants.J2000));
         Assert.Equal(Vector3D.Zero, sim.PositionAt("sun", AstroConstants.J2000 + 10_000.0));
@@ -19,7 +19,7 @@ public sealed class SimEngineTests
     [Fact]
     public void TerraFicaAProximadamenteUmaUnidadeAstronomicaDoSol()
     {
-        var sim = new SimEngine(new HardcodedBodyRepository());
+        var sim = SolarSystem.NewEngine();
 
         var distancia = sim.PositionAt("earth", AstroConstants.J2000).Magnitude;
 
@@ -32,7 +32,7 @@ public sealed class SimEngineTests
     [Fact]
     public void AvancoPublicaSnapshotComTodosOsCorpos()
     {
-        var sim = new SimEngine(new HardcodedBodyRepository());
+        var sim = SolarSystem.NewEngine();
         SystemStateSnapshot? recebido = null;
         sim.SystemUpdated += snapshot => recebido = snapshot;
 
@@ -47,7 +47,7 @@ public sealed class SimEngineTests
     [Fact]
     public void CorpoDesconhecidoFalhaComMensagemClara()
     {
-        var sim = new SimEngine(new HardcodedBodyRepository());
+        var sim = SolarSystem.NewEngine();
 
         var erro = Assert.Throws<KeyNotFoundException>(
             () => sim.PositionAt("plutao", AstroConstants.J2000));

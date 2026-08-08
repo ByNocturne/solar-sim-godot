@@ -10,14 +10,17 @@ estado como tipo de primeira classe e suporte planejado a órbitas abertas.
 
 ## Estado
 
-**Marcos M0, M1 e M2 concluídos.** O simulador mostra Sol, Terra e Marte em órbita, com o
-tempo controlável em tela, e o motor está validado contra as efemérides DE441 do JPL
-Horizons: erro máximo de 0,0133% na distância radial ao longo de 26 anos simulados. O
-próximo passo é o M3, que traz o Sistema Solar completo e a hierarquia de luas. O plano
-está em [ROADMAP.md](ROADMAP.md), dividido em oito marcos.
+**Marcos M0 a M4 concluídos**, com a confirmação visual do M4 pendente. O simulador carrega
+o Sistema Solar de um arquivo JSON — Sol, oito planetas, a Lua, as galileanas e Titã —
+propaga cada corpo em torno do seu e desenha as órbitas, com a câmera ancorável em
+qualquer corpo. O motor está validado contra as efemérides DE441 do JPL Horizons: erro
+máximo de 0,0132% na distância radial ao longo de 26 anos simulados. O próximo passo é o
+M5, a interface. O plano está em [ROADMAP.md](ROADMAP.md), dividido em oito marcos.
 
-Controles: espaço pausa, setas ajustam a velocidade do tempo, R volta para J2000, roda do
-mouse dá zoom.
+Controles: espaço pausa, setas ajustam a velocidade do tempo, R volta para J2000, Tab e
+Shift+Tab ancoram a câmera no corpo seguinte e no anterior, um clique ancora no corpo
+apontado, L alterna entre escala logarítmica e linear, N mostra ou esconde os nomes, Home
+devolve a vista inicial, a roda dá zoom e o botão direito arrasta.
 
 ## Setup
 
@@ -58,11 +61,28 @@ O motor opera inteiramente em `double`. A conversão para `float` acontece em um
 lugar, na camada Bridge, e somente após subtrair a posição da câmera — quando os números
 já são pequenos.
 
+## Escalas
+
+O Sistema Solar em proporção real é quase todo vazio: Netuno está 78 vezes mais longe do
+Sol que Mercúrio, então qualquer escala linear que caiba na tela empilha os planetas
+internos em um punhado de pixels. O modo logarítmico comprime o exterior por uma curva
+perceptual e devolve os planetas internos ao mapa; `L` alterna entre os dois, com
+transição suave.
+
+A escala é hierárquica: cada corpo tem o seu próprio mapa para os filhos, dimensionado
+pela maior órbita que abriga. Sem isso, a órbita da Lua — 390 vezes menor que a da Terra —
+sumiria dentro do disco do planeta. O raio desenhado dos corpos tem escala própria, sem
+relação com a das distâncias, porque em proporção real a Terra teria centésimos de pixel.
+
 ## Unidades
 
 Quilômetros, segundos e radianos internamente, com o parâmetro gravitacional em km³/s²,
 que é a unidade em que o JPL publica valores de GM. O tempo de calendário é a Data
 Juliana, com época J2000.0 em 2451545.0.
+
+Graus e unidades astronômicas existem em um lugar só: `Data/solar_system_j2000.json`, onde
+a unidade está declarada no nome de cada campo e a conversão acontece na carga. Acrescentar
+um corpo é editar esse arquivo.
 
 ## Documentos
 

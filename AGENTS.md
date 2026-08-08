@@ -5,14 +5,19 @@ como base para trabalho futuro com missões e transferências orbitais.
 
 ## Estado atual
 
-Marcos M0, M1 e M2 concluídos. O motor propaga Sol, Terra e Marte com erro radial abaixo
-de 0,02% contra as efemérides DE441 do JPL, e produz posição e velocidade. O próximo passo
-é o M3, que traz o sistema completo por JSON e a hierarquia de luas, descrito no
+Marcos M0 a M4 concluídos, com a verificação visual do M4 ainda pendente. O motor carrega
+o Sistema Solar de `Data/solar_system_j2000.json` — Sol, oito planetas, a Lua, as
+galileanas e Titã — compõe a posição de cada corpo a partir da do pai e produz posição e
+velocidade, com erro radial abaixo de 0,02% contra as efemérides DE441 do JPL. A
+apresentação tem escala hierárquica com modo logarítmico e linear, câmera ancorável e
+desenho de órbitas. O próximo passo é o M5, a interface, descrito no
 [ROADMAP.md](ROADMAP.md).
 
 Para ver rodando: abra o projeto no Godot e pressione F5, ou
 `godot --path . --resolution 1152x648`. Espaço pausa, setas ajustam a velocidade, R volta
-para J2000, roda do mouse dá zoom.
+para J2000, Tab e Shift+Tab ancoram a câmera no corpo seguinte e no anterior, um clique
+ancora no corpo apontado, L alterna entre escala logarítmica e linear, N mostra ou esconde
+os nomes, Home devolve a vista inicial, a roda dá zoom e o botão direito arrasta.
 
 ## Como construir
 
@@ -45,6 +50,19 @@ Essa separação é o que faz o invariante 1 ser garantido pelo compilador: `usi
 | `UI/` | Painéis e controles |
 | `Data/` | Dados estáticos do Sistema Solar na época J2000 |
 | `Tests/` | Testes do motor; referencia apenas `Engine/` |
+
+`Tests/` também compila os quatro arquivos de `Bridge/` que não tocam no Godot —
+`ScaleMapper`, `ScaleLayout`, `SystemProjector` e `CameraRig` — para poder testar a
+matemática de escala e de câmera. Se algum deles passar a usar o Godot, o build dos testes
+quebra de propósito.
+
+## Os dados do sistema
+
+`Data/solar_system_j2000.json` é a única fonte dos corpos, e acrescentar um planeta ou uma
+lua é editá-lo. A unidade está no nome do campo — `radiusKm`, `inclinationDeg`, `muKm3S2` —
+e a carga converte graus para radianos e unidades astronômicas para quilômetros. A
+validação recusa pai inexistente, ciclo na hierarquia, campo ausente e campo com nome
+desconhecido, sempre dizendo qual corpo e qual campo.
 
 ## Os quatro invariantes
 

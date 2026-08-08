@@ -10,6 +10,13 @@ namespace SolarSim.Engine.Models;
 /// </remarks>
 public readonly record struct StateVector(Vector3D PositionKm, Vector3D VelocityKmS)
 {
+    /// <summary>
+    /// Compõe o estado do pai com o estado local do filho. É a operação que leva a
+    /// posição relativa à órbita para o referencial global, e a velocidade junto.
+    /// </summary>
+    public static StateVector operator +(StateVector parent, StateVector local)
+        => new(parent.PositionKm + local.PositionKm, parent.VelocityKmS + local.VelocityKmS);
+
     public double DistanceKm => PositionKm.Magnitude;
 
     public double SpeedKmS => VelocityKmS.Magnitude;
@@ -24,6 +31,6 @@ public readonly record struct StateVector(Vector3D PositionKm, Vector3D Velocity
     /// Energia orbital específica pela equação vis-viva. Também constante ao longo da
     /// órbita: negativa para órbitas fechadas, positiva para hiperbólicas.
     /// </summary>
-    public double SpecificEnergy(double parentMuKm3S2)
-        => (SpeedKmS * SpeedKmS / 2.0) - (parentMuKm3S2 / DistanceKm);
+    public double SpecificEnergy(double muKm3S2)
+        => (SpeedKmS * SpeedKmS / 2.0) - (muKm3S2 / DistanceKm);
 }

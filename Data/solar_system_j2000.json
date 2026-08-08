@@ -1,0 +1,263 @@
+{
+  "schemaVersion": 1,
+  "frame": "Eclíptica e equinócio médios de J2000",
+  "epoch": {
+    "name": "J2000.0",
+    "julianDate": 2451545.0
+  },
+  "units": {
+    "convention": "O sufixo do nome do campo declara a unidade: Km, Au, Deg, Km3S2.",
+    "distance": "quilômetros; semiMajorAxisAu aceita unidades astronômicas na entrada",
+    "angles": "graus, convertidos para radianos na carga",
+    "gravitationalParameter": "km^3/s^2, a mesma unidade em que o JPL publica GM",
+    "meanAnomaly": "referida a epoch.julianDate"
+  },
+  "sources": [
+    "Planetas: JPL, Keplerian Elements for Approximate Positions of the Major Planets, tabela 1800-2050.",
+    "GM: JPL DE440.",
+    "Lua: elementos médios de J2000 conforme Meeus, Astronomical Algorithms, capítulo 47.",
+    "Galileanas: longitudes médias de Meeus, capítulo 44, avaliadas em J2000."
+  ],
+  "notes": [
+    "Os elementos dos planetas descrevem o baricentro do sistema planetário, não o centro do planeta. Para a Terra a diferença chega a 4700 km, três ordens de grandeza abaixo da distância ao Sol.",
+    "Elementos fixos, sem taxas seculares: a precisão se degrada conforme a data se afasta de J2000. As taxas estão no backlog.",
+    "Para satélites, o plano de referência real é o equador do planeta. Como a obliquidade ainda não é modelada, as órbitas usam a eclíptica como plano de referência; isso afeta a orientação do plano orbital, não a distância ao corpo pai."
+  ],
+  "bodies": [
+    {
+      "id": "sun",
+      "name": "Sol",
+      "parent": null,
+      "muKm3S2": 1.32712440018e11,
+      "radiusKm": 695700.0,
+      "colorRgb": "#FFD966"
+    },
+    {
+      "id": "mercury",
+      "name": "Mercúrio",
+      "parent": "sun",
+      "muKm3S2": 2.2031868551e4,
+      "radiusKm": 2439.7,
+      "colorRgb": "#8C8C94",
+      "orbit": {
+        "semiMajorAxisAu": 0.38709927,
+        "eccentricity": 0.20563593,
+        "inclinationDeg": 7.00497902,
+        "longitudeOfAscendingNodeDeg": 48.33076593,
+        "argumentOfPeriapsisDeg": 29.12703035,
+        "meanAnomalyAtEpochDeg": 174.79252722
+      }
+    },
+    {
+      "id": "venus",
+      "name": "Vênus",
+      "parent": "sun",
+      "muKm3S2": 3.24858592e5,
+      "radiusKm": 6051.8,
+      "colorRgb": "#D9B77A",
+      "orbit": {
+        "semiMajorAxisAu": 0.72333566,
+        "eccentricity": 0.00677672,
+        "inclinationDeg": 3.39467605,
+        "longitudeOfAscendingNodeDeg": 76.67984255,
+        "argumentOfPeriapsisDeg": 54.92262463,
+        "meanAnomalyAtEpochDeg": 50.37663232
+      }
+    },
+    {
+      "id": "earth",
+      "name": "Terra",
+      "parent": "sun",
+      "muKm3S2": 3.986004418e5,
+      "radiusKm": 6371.0,
+      "colorRgb": "#4A90D9",
+      "orbit": {
+        "semiMajorAxisAu": 1.00000261,
+        "eccentricity": 0.01671123,
+        "inclinationDeg": -0.00001531,
+        "longitudeOfAscendingNodeDeg": 0.0,
+        "argumentOfPeriapsisDeg": 102.93768193,
+        "meanAnomalyAtEpochDeg": -2.47311027
+      }
+    },
+    {
+      "id": "moon",
+      "name": "Lua",
+      "parent": "earth",
+      "muKm3S2": 4.902800118e3,
+      "radiusKm": 1737.4,
+      "colorRgb": "#BFBFBF",
+      "note": "Semi-eixo de 384748 km, e não a distância média de 384400 km: com o GM combinado Terra-Lua, é este valor que reproduz o mês sideral de 27,32 dias.",
+      "orbit": {
+        "semiMajorAxisKm": 384748.0,
+        "eccentricity": 0.0549,
+        "inclinationDeg": 5.145396,
+        "longitudeOfAscendingNodeDeg": 125.04452,
+        "argumentOfPeriapsisDeg": -41.69147,
+        "meanAnomalyAtEpochDeg": 134.9634
+      }
+    },
+    {
+      "id": "mars",
+      "name": "Marte",
+      "parent": "sun",
+      "muKm3S2": 4.282837e4,
+      "radiusKm": 3389.5,
+      "colorRgb": "#C1440E",
+      "orbit": {
+        "semiMajorAxisAu": 1.52371034,
+        "eccentricity": 0.0933941,
+        "inclinationDeg": 1.84969142,
+        "longitudeOfAscendingNodeDeg": 49.55953891,
+        "argumentOfPeriapsisDeg": -73.5031685,
+        "meanAnomalyAtEpochDeg": 19.39019754
+      }
+    },
+    {
+      "id": "jupiter",
+      "name": "Júpiter",
+      "parent": "sun",
+      "muKm3S2": 1.266865319e8,
+      "radiusKm": 69911.0,
+      "colorRgb": "#D8A47F",
+      "orbit": {
+        "semiMajorAxisAu": 5.202887,
+        "eccentricity": 0.04838624,
+        "inclinationDeg": 1.30439695,
+        "longitudeOfAscendingNodeDeg": 100.47390909,
+        "argumentOfPeriapsisDeg": -85.74542926,
+        "meanAnomalyAtEpochDeg": 19.66796068
+      }
+    },
+    {
+      "id": "io",
+      "name": "Io",
+      "parent": "jupiter",
+      "muKm3S2": 5.9599155e3,
+      "radiusKm": 1821.6,
+      "colorRgb": "#E5C46B",
+      "note": "Nó e argumento do periapsis zerados: sem o equador de Júpiter como plano de referência, apenas a fase e o tamanho da órbita são significativos. Vale para as quatro galileanas.",
+      "orbit": {
+        "semiMajorAxisKm": 421800.0,
+        "eccentricity": 0.0041,
+        "inclinationDeg": 0.036,
+        "longitudeOfAscendingNodeDeg": 0.0,
+        "argumentOfPeriapsisDeg": 0.0,
+        "meanAnomalyAtEpochDeg": 163.8067
+      }
+    },
+    {
+      "id": "europa",
+      "name": "Europa",
+      "parent": "jupiter",
+      "muKm3S2": 3.2027121e3,
+      "radiusKm": 1560.8,
+      "colorRgb": "#C9B9A0",
+      "orbit": {
+        "semiMajorAxisKm": 671100.0,
+        "eccentricity": 0.0094,
+        "inclinationDeg": 0.466,
+        "longitudeOfAscendingNodeDeg": 0.0,
+        "argumentOfPeriapsisDeg": 0.0,
+        "meanAnomalyAtEpochDeg": 358.4108
+      }
+    },
+    {
+      "id": "ganymede",
+      "name": "Ganimedes",
+      "parent": "jupiter",
+      "muKm3S2": 9.8878328e3,
+      "radiusKm": 2634.1,
+      "colorRgb": "#9A8C7A",
+      "orbit": {
+        "semiMajorAxisKm": 1070400.0,
+        "eccentricity": 0.0013,
+        "inclinationDeg": 0.177,
+        "longitudeOfAscendingNodeDeg": 0.0,
+        "argumentOfPeriapsisDeg": 0.0,
+        "meanAnomalyAtEpochDeg": 5.7129
+      }
+    },
+    {
+      "id": "callisto",
+      "name": "Calisto",
+      "parent": "jupiter",
+      "muKm3S2": 7.179289e3,
+      "radiusKm": 2410.3,
+      "colorRgb": "#6E635A",
+      "orbit": {
+        "semiMajorAxisKm": 1882700.0,
+        "eccentricity": 0.0074,
+        "inclinationDeg": 0.192,
+        "longitudeOfAscendingNodeDeg": 0.0,
+        "argumentOfPeriapsisDeg": 0.0,
+        "meanAnomalyAtEpochDeg": 224.8151
+      }
+    },
+    {
+      "id": "saturn",
+      "name": "Saturno",
+      "parent": "sun",
+      "muKm3S2": 3.79311879e7,
+      "radiusKm": 58232.0,
+      "colorRgb": "#E3C97F",
+      "orbit": {
+        "semiMajorAxisAu": 9.53667594,
+        "eccentricity": 0.05386179,
+        "inclinationDeg": 2.48599187,
+        "longitudeOfAscendingNodeDeg": 113.66242448,
+        "argumentOfPeriapsisDeg": -21.06354617,
+        "meanAnomalyAtEpochDeg": -42.64463408
+      }
+    },
+    {
+      "id": "titan",
+      "name": "Titã",
+      "parent": "saturn",
+      "muKm3S2": 8.978138e3,
+      "radiusKm": 2574.7,
+      "colorRgb": "#D9A441",
+      "note": "Anomalia média na época não validada contra efemérides: o tamanho e a forma da órbita estão corretos, a fase é arbitrária.",
+      "orbit": {
+        "semiMajorAxisKm": 1221870.0,
+        "eccentricity": 0.0288,
+        "inclinationDeg": 0.35,
+        "longitudeOfAscendingNodeDeg": 0.0,
+        "argumentOfPeriapsisDeg": 0.0,
+        "meanAnomalyAtEpochDeg": 0.0
+      }
+    },
+    {
+      "id": "uranus",
+      "name": "Urano",
+      "parent": "sun",
+      "muKm3S2": 5.7939399e6,
+      "radiusKm": 25362.0,
+      "colorRgb": "#8FD3D9",
+      "orbit": {
+        "semiMajorAxisAu": 19.18916464,
+        "eccentricity": 0.04725744,
+        "inclinationDeg": 0.77263783,
+        "longitudeOfAscendingNodeDeg": 74.01692503,
+        "argumentOfPeriapsisDeg": 96.93735127,
+        "meanAnomalyAtEpochDeg": 142.28382821
+      }
+    },
+    {
+      "id": "neptune",
+      "name": "Netuno",
+      "parent": "sun",
+      "muKm3S2": 6.8365299e6,
+      "radiusKm": 24622.0,
+      "colorRgb": "#4B6FD1",
+      "orbit": {
+        "semiMajorAxisAu": 30.06992276,
+        "eccentricity": 0.00859048,
+        "inclinationDeg": 1.77004347,
+        "longitudeOfAscendingNodeDeg": 131.78422574,
+        "argumentOfPeriapsisDeg": -86.81946347,
+        "meanAnomalyAtEpochDeg": -100.08479196
+      }
+    }
+  ]
+}

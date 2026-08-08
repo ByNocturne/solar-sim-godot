@@ -7,26 +7,23 @@ namespace SolarSim.Bridge;
 /// Único ponto do sistema onde a precisão dupla do domínio se torna precisão simples
 /// do motor gráfico.
 /// </summary>
-public sealed class ViewportTransformer(ScaleMapper scale)
+public sealed class ViewportTransformer
 {
-    public ScaleMapper Scale { get; } = scale;
-
-    /// <summary>Posição da câmera no referencial físico, em km.</summary>
-    public Vector3D CameraPositionKm { get; set; } = Vector3D.Zero;
+    /// <summary>Ponto para onde a câmera olha, em pixels do espaço projetado.</summary>
+    public Vector3D FocusPixels { get; set; } = Vector3D.Zero;
 
     /// <summary>
-    /// A subtração da câmera acontece em <c>double</c>, e só o resultado já reduzido é
+    /// A subtração do foco acontece em <c>double</c>, e só o resultado já reduzido é
     /// convertido para <c>float</c>. Converter antes truncaria a mantissa e produziria
-    /// trepidação em corpos distantes da origem.
+    /// trepidação em corpos distantes da origem — que é exatamente a situação de qualquer
+    /// corpo do sistema exterior.
     /// </summary>
-    public Vector2 ToScreen(Vector3D positionKm)
+    public Vector2 ToScreen(Vector3D positionPixels)
     {
-        var relativeX = positionKm.X - CameraPositionKm.X;
-        var relativeY = positionKm.Y - CameraPositionKm.Y;
+        var relativeX = positionPixels.X - FocusPixels.X;
+        var relativeY = positionPixels.Y - FocusPixels.Y;
 
         // O eixo Y do Godot cresce para baixo; o da eclíptica, para cima.
-        return new Vector2(
-            (float)Scale.KmToPixels(relativeX),
-            (float)-Scale.KmToPixels(relativeY));
+        return new Vector2((float)relativeX, (float)-relativeY);
     }
 }

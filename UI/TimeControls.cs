@@ -4,8 +4,8 @@ using SolarSim.Bridge;
 namespace SolarSim.UI;
 
 /// <summary>
-/// Controle de tempo improvisado do M1: teclado e um rótulo de estado. A versão com
-/// slider, entrada de data e botões entra no M5.
+/// Controle de tempo improvisado do M1, hoje também servindo de HUD para a vista. O M5
+/// separa isso em painéis de verdade, com slider, entrada de data e árvore de corpos.
 /// </summary>
 public partial class TimeControls : CanvasLayer
 {
@@ -37,13 +37,18 @@ public partial class TimeControls : CanvasLayer
 
         var time = _bridge.Sim.Time;
         var estado = time.IsPaused ? "PAUSADO" : "RODANDO";
+        var escala = _bridge.ScaleMap.Mode == ScaleMode.Logarithmic ? "logarítmica" : "linear";
 
         _status.Text = $"""
-            {time.UtcDateTime:yyyy-MM-dd HH:mm} UTC   [{estado}]
+            {time.UtcDateTime:yyyy-MM-dd HH:mm} UTC   [{estado}]   {Godot.Engine.GetFramesPerSecond()} fps
             Velocidade: {time.SpeedMultiplier:N0}x tempo real
             JD {time.JulianDate:F3}
+            Escala: {escala}   Âncora: {_bridge.AnchorName}
 
-            Espaço: pausa   Setas: velocidade   R: volta a J2000   Roda: zoom
+            Espaço: pausa   Setas: velocidade   R: volta a J2000
+            Tab: ancora no corpo seguinte   Shift+Tab: no anterior   Clique: no corpo
+            L: escala   N: nomes   Home: vista inicial
+            Roda: zoom   Botão direito: arrasta
             """;
     }
 
