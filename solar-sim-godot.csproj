@@ -9,11 +9,12 @@
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
 
-  <!-- O Godot.NET.Sdk inclui **/*.cs por padrao; o motor e os testes sao
-       projetos proprios e nao devem ser compilados aqui tambem. -->
+  <!-- O Godot.NET.Sdk inclui **/*.cs por padrao; o motor, os testes e as ferramentas
+       de linha de comando sao projetos proprios e nao devem ser compilados aqui. -->
   <ItemGroup>
     <Compile Remove="Engine/**/*.cs" />
     <Compile Remove="Tests/**/*.cs" />
+    <Compile Remove="Tools/**/*.cs" />
   </ItemGroup>
 
   <ItemGroup>

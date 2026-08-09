@@ -141,7 +141,9 @@ public sealed class EnvironmentService
             o2ch4,
             ozone,
             tidalWatts,
-            zones.PolarIce);
+            zones.PolarIce,
+            sim.TidesOn(bodyId, jd).Fate,
+            sim.RingZoneOf(bodyId).IsPlausible);
 
         var report = new EnvironmentReport
         {
@@ -304,7 +306,9 @@ public sealed class EnvironmentService
         bool o2ch4,
         bool ozone,
         double tidalWatts,
-        bool polarIce)
+        bool polarIce,
+        SatelliteFate fate,
+        bool ringsPlausible)
     {
         var flags = new List<string>();
 
@@ -376,6 +380,20 @@ public sealed class EnvironmentService
         if (polarIce)
         {
             flags.Add("polar_ice");
+        }
+
+        if (fate == SatelliteFate.AtRisk)
+        {
+            flags.Add("inside_fluid_roche");
+        }
+        else if (fate == SatelliteFate.Disrupted)
+        {
+            flags.Add("inside_rigid_roche");
+        }
+
+        if (ringsPlausible)
+        {
+            flags.Add("ring_zone");
         }
 
         if (o2ch4)

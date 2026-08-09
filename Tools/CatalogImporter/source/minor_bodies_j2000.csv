@@ -1,0 +1,42 @@
+# Fonte curada do catalogo de corpos menores. Editar aqui e rodar o importador:
+#   dotnet run --project Tools/CatalogImporter
+#
+# Elementos: JPL Horizons, elementos osculadores geometricos pedidos exatamente em
+# JD 2451545.0, centro 500@10 (Sol), REF_PLANE=ECLIPTIC, REF_SYSTEM=ICRF, OUT_UNITS=AU-D.
+# Por virem ja na epoca certa, epochJd vale 2451545.0 em todas as linhas e a conversao de
+# epoca do importador nao tem o que fazer. Ela existe para a fonte que nao permite pedir
+# a data, como o MPCORB, cujos elementos vem na epoca corrente.
+#
+# Tamanho e massa: JPL Small-Body Database (phys_par) quando ha, literatura quando nao ha.
+# A coluna note diz de onde veio cada numero. muKm3S2 e densityGCm3 sao exclusivos.
+# colorRgb vazio significa a cor da classe.
+#
+id,name,kind,family,colorRgb,epochJd,semiMajorAxisAu,eccentricity,inclinationDeg,longitudeOfAscendingNodeDeg,argumentOfPeriapsisDeg,meanAnomalyDeg,radiusKm,muKm3S2,densityGCm3,note
+ceres,Ceres,asteroid,Cinturão principal,#C9C0B0,2451545.0,2.766496019994375,0.07837562647163041,10.58336045805628,80.49435747295276,73.92286274285223,6.176654513180486,469.7,62.6284,,"Planeta anão. GM e diâmetro medidos pela Dawn, via SBDB."
+pallas,Palas,asteroid,Cinturão principal,,2451545.0,2.772322475089011,0.2296435321697976,34.84614003622473,173.1977991340821,310.2656379003444,352.9602856167207,256.5,13.63,,"GM e diâmetro do SBDB. A inclinação de 34,8° é a maior do cinturão principal."
+vesta,Vesta,asteroid,Cinturão principal,,2451545.0,2.361534934739072,0.09002244561937413,7.133935828421654,103.9514370845001,149.5866679599199,341.0238343838706,261.385,17.2882844,,"GM e diâmetro medidos pela Dawn, via SBDB."
+hygiea,Hígia,asteroid,Cinturão principal,,2451545.0,3.138421324853723,0.1194647926154634,3.842651449337091,283.6632054163321,314.3682343023398,339.2148139451292,203.56,7.0,,"GM e diâmetro do SBDB."
+eros,Eros,nearEarthAsteroid,Amor,,2451545.0,1.458339407824060,0.2227585463818351,10.82844050869488,304.4156610725765,178.6458706145036,57.69232527092141,8.42,4.463e-4,,"GM medido pela NEAR Shoemaker, via SBDB. Raio médio de 8,42 km para um corpo de 34x11x11 km."
+itokawa,Itokawa,nearEarthAsteroid,Apolo,,2451545.0,1.324945731521161,0.2805282351306318,1.717090060975622,71.61397274240683,160.1384777187778,44.09133669689545,0.165,2.1e-9,,"GM medido pela Hayabusa, via SBDB."
+bennu,Bennu,nearEarthAsteroid,Apolo,,2451545.0,1.128923362467880,0.2046521729007511,6.025536314644479,2.178544486232719,65.67192633324575,35.41801662915039,0.24222,4.8904e-9,,"GM medido pela OSIRIS-REx, via SBDB."
+ryugu,Ryugu,nearEarthAsteroid,Apolo,,2451545.0,1.189053951974444,0.1900160695538676,5.884476449245160,251.7267381018288,211.2722442242465,288.6528279469740,0.448,3.00e-8,,"GM medido pela Hayabusa 2, via SBDB."
+apophis,Apophis,nearEarthAsteroid,Aten,,2451545.0,0.9223418470584992,0.1913926355906355,3.331245834187804,204.6568222256703,126.0648404743601,232.1807985958005,0.170,,2.6,"Raio do Horizons. Sem GM medido: densidade típica de tipo S."
+achilles,Aquiles,trojan,Troiano de Júpiter (L4),,2451545.0,5.182568403446787,0.1486568348772998,10.32812768369519,316.5831671188615,132.1362560649956,11.75036895412703,65.0495,,1.3,"Diâmetro do SBDB. Sem GM medido: densidade típica de troiano tipo D."
+hektor,Héctor,trojan,Troiano de Júpiter (L4),,2451545.0,5.209382515343233,0.02313726659122605,18.21022036498856,342.7908032229638,179.2553810563498,313.6516963100735,112.5,,1.0,"Maior troiano conhecido. Raio do Horizons; densidade da órbita do satélite Skamandrios."
+eurybates,Euríbates,trojan,Troiano de Júpiter (L4),,2451545.0,5.143715007683525,0.09104886608687410,8.082636676832978,43.52651130810499,26.52965987756288,39.66877658494174,31.9425,,1.3,"Alvo da missão Lucy. Diâmetro do SBDB; densidade típica de troiano tipo C."
+patroclus,Pátroclo,trojan,Troiano de Júpiter (L5),,2451545.0,5.225536833096075,0.1392144878174891,22.05177828259621,44.42204400778891,307.3013815689980,340.5787686187503,70.181,,0.88,"Binário com Menécio, também alvo da Lucy. Densidade medida do par."
+aeneas,Eneias,trojan,Troiano de Júpiter (L5),,2451545.0,5.179653120222099,0.1045374041123879,16.70246681203935,247.4544203377416,48.64492069110278,46.15265761768797,59.01,,1.3,"Diâmetro do SBDB. Sem GM medido: densidade típica de troiano tipo D."
+chiron,Quíron,centaur,Centauro,,2451545.0,13.60507295259335,0.3793438806104252,6.941566477684404,209.3966703243138,339.1420137446732,27.99722098958118,83.0,,1.0,"Primeiro centauro descoberto, e também cometa 95P: tem coma e anéis. Raio do Horizons."
+pholus,Folo,centaur,Centauro,,2451545.0,20.23910787292254,0.5724788139962792,24.69853519933214,119.3246008759594,354.4986568816179,32.74530853219506,95.0,,1.0,"Diâmetro do SBDB. Sem massa medida: densidade típica de centauro."
+halley,1P/Halley,comet,Cometa tipo Halley,,2451545.0,17.92150741181706,0.9672702024496220,162.1960426231300,59.50786535466860,112.4496220272734,65.84890057549084,5.5,,0.6,"Órbita retrógrada, com inclinação de 162°. Raio do Horizons; densidade típica de núcleo cometário."
+encke,2P/Encke,comet,Cometa tipo Encke,,2451545.0,2.217547075218005,0.8470530564826724,11.76459759877654,334.6320833809893,186.4698903368474,284.7450660040845,2.4,,0.6,"O menor período conhecido entre os cometas: 3,3 anos. Diâmetro do SBDB."
+tempel1,9P/Tempel 1,comet,Cometa da família de Júpiter,,2451545.0,3.118336015263190,0.5189587925371144,10.54134509967927,68.96649582706409,178.9115247963565,359.8000072860011,3.0,,0.47,"Alvo do impactador Deep Impact, que é de onde vem a densidade medida."
+churyumov,67P/Churyumov-Gerasimenko,comet,Cometa da família de Júpiter,,2451545.0,3.510982603418104,0.6314071458158499,7.122423555367961,50.99152765897843,11.34988861633243,216.2305564932671,1.7,6.622e-7,,"GM medido pela Rosetta, via SBDB."
+swifttuttle,109P/Swift-Tuttle,comet,Cometa tipo Halley,,2451545.0,26.34271940569137,0.9631624069830728,113.3406285992539,139.5133225675405,153.2379818767868,18.77942625229999,13.0,,0.6,"Corpo de origem das Perseidas. Diâmetro do SBDB."
+pluto,Plutão,transNeptunian,Plutino,#D8C0A8,2451545.0,39.57126152242962,0.2494484952274253,17.23565301572196,110.0399399536200,115.1786659760940,14.14365453678677,1188.3,869.326,,"Planeta anão. GM e raio pós-New Horizons, via Horizons. Sem Caronte: aqui Plutão orbita o Sol sozinho."
+eris,Éris,transNeptunian,Disco disperso,,2451545.0,68.13986865232954,0.4325050983099001,43.74050564207168,36.12852074096747,150.8448096449848,194.2903409988061,1163.0,1108.0,,"Planeta anão, e o mais massivo dos transnetunianos. Massa da órbita de Disnomia."
+makemake,Makemake,transNeptunian,Clássico (cubewano),,2451545.0,45.37205778306633,0.1645232903298833,29.00018553920377,79.27490607393290,296.2809991935295,139.7201624508081,715.0,,1.7,"Planeta anão. Raio por ocultação estelar; sem massa bem determinada, densidade estimada."
+haumea,Haumea,transNeptunian,Clássico (cubewano),,2451545.0,42.90925766086671,0.1999209495775153,28.20614176692041,121.9332385932473,240.5907776701779,189.5952699212157,780.0,267.4,,"Planeta anão alongado pela rotação de 3,9 h. Raio da esfera de volume equivalente; massa das órbitas das luas."
+quaoar,Quaoar,transNeptunian,Clássico (cubewano),,2451545.0,43.13300737717343,0.03951007383606750,8.005089469375157,189.0799904468402,163.7854906986470,258.9555093443548,545.0,80.1,,"Massa da órbita de Weywot. Tem anel fora do limite de Roche, o que ainda não se explicou."
+orcus,Orco,transNeptunian,Plutino,,2451545.0,39.26252228984306,0.2257511424053860,20.53929449722906,268.4572431140700,73.75098677536380,150.0400595978003,458.5,36.6,,"Plutino em ressonância 2:3 com Netuno, como Plutão. Massa sem a lua Vanth."
+sedna,Sedna,transNeptunian,Destacado,,2451545.0,549.8732686054069,0.8609804671093849,11.92524941582647,144.3169286137796,310.7328635633867,357.9014766680082,498.0,,1.5,"Periélio de 76 UA, longe demais para Netuno explicar: é o protótipo dos destacados. Sem massa medida."

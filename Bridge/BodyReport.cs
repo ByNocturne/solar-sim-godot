@@ -24,6 +24,11 @@ public readonly record struct BodyReport
     /// <summary>Nome do corpo na origem, que é o que rotula a distância heliocêntrica.</summary>
     public required string RootName { get; init; }
 
+    public BodyKind Kind { get; init; }
+
+    /// <summary>Subclassificação declarada no arquivo, quando há.</summary>
+    public string? Family { get; init; }
+
     public double RadiusKm { get; init; }
 
     public double MuKm3S2 { get; init; }
@@ -72,6 +77,18 @@ public readonly record struct BodyReport
     public double SphereOfInfluenceKm { get; init; }
 
     /// <summary>
+    /// Os limites de Roche deste corpo contra o pai, e o que a maré faz com ele. Vazio
+    /// para a raiz e para quem não tem massa ou raio.
+    /// </summary>
+    public SatelliteTides Tides { get; init; }
+
+    /// <summary>
+    /// A faixa em que este corpo poderia ter um anel. Ao contrário da maré, é sobre o
+    /// corpo como hospedeiro, e não como satélite.
+    /// </summary>
+    public RingZone Rings { get; init; }
+
+    /// <summary>
     /// Verdadeiro para um corpo acrescentado em tempo de execução, que é quem pode trocar
     /// de corpo pai e quem entra no arquivo salvo.
     /// </summary>
@@ -106,6 +123,8 @@ public readonly record struct BodyReport
             Name = body.Name,
             ParentName = body.ParentId is { } parentId ? sim.BodyOf(parentId).Name : null,
             RootName = root.Name,
+            Kind = body.Kind,
+            Family = body.Family,
             RadiusKm = body.RadiusKm,
             MuKm3S2 = body.MuKm3S2,
             DistanceToParentKm = local.PositionKm.Magnitude,
@@ -113,6 +132,8 @@ public readonly record struct BodyReport
             SpeedRelativeToParentKmS = local.VelocityKmS.Magnitude,
             SpeedRelativeToRootKmS = (global.VelocityKmS - rootState.VelocityKmS).Magnitude,
             SphereOfInfluenceKm = sim.SphereOfInfluenceKm(bodyId),
+            Tides = sim.TidesOn(bodyId, julianDate),
+            Rings = sim.RingZoneOf(bodyId),
             IsDynamic = sim.IsDynamic(bodyId),
         };
 

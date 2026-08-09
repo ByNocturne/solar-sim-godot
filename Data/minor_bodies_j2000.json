@@ -1,0 +1,556 @@
+{
+  "schemaVersion": 1,
+  "frame": "Eclíptica e equinócio médios de J2000, centrado no Sol",
+  "epoch": {
+    "name": "J2000.0",
+    "julianDate": 2451545.0
+  },
+  "units": {
+    "convention": "O sufixo do nome do campo declara a unidade, como no arquivo do sistema.",
+    "mass": "muKm3S2 quando o GM foi medido; densityGCm3 quando só há tamanho e uma densidade típica da classe."
+  },
+  "sources": [
+    "Elementos: JPL Horizons, elementos osculadores geométricos em JD 2451545.0, centro 500@10 (Sol), plano da eclíptica, referencial ICRF.",
+    "Tamanho e massa: JPL Small-Body Database (phys_par) e literatura, linha a linha na nota de cada corpo.",
+    "Gerado por Tools/CatalogImporter a partir de Tools/CatalogImporter/source/minor_bodies_j2000.csv."
+  ],
+  "notes": [
+    "Este arquivo é gerado. Editar o CSV da fonte e rodar o importador de novo, em vez de editar aqui.",
+    "Nenhum corpo declara 'orbit.rates': a precessão que o motor sabe calcular sozinho não se declara, e a que ele não sabe não está medida para estes corpos.",
+    "Onde não há GM medido, entra 'densityGCm3' e o motor deriva a massa da esfera equivalente. É estimativa, e serve à esfera de influência, não à balança."
+  ],
+  "bodies": [
+    {
+      "id": "ceres",
+      "name": "Ceres",
+      "parent": "sun",
+      "kind": "asteroid",
+      "family": "Cinturão principal",
+      "muKm3S2": 62.6284,
+      "radiusKm": 469.7,
+      "colorRgb": "#C9C0B0",
+      "note": "Planeta anão. GM e diâmetro medidos pela Dawn, via SBDB.",
+      "orbit": {
+        "semiMajorAxisAu": 2.766496019994375,
+        "eccentricity": 0.0783756264716304,
+        "inclinationDeg": 10.58336045805628,
+        "longitudeOfAscendingNodeDeg": 80.49435747295276,
+        "argumentOfPeriapsisDeg": 73.92286274285223,
+        "meanAnomalyAtEpochDeg": 6.176654513180486
+      }
+    },
+    {
+      "id": "pallas",
+      "name": "Palas",
+      "parent": "sun",
+      "kind": "asteroid",
+      "family": "Cinturão principal",
+      "muKm3S2": 13.63,
+      "radiusKm": 256.5,
+      "colorRgb": "#9C8F7A",
+      "note": "GM e diâmetro do SBDB. A inclinação de 34,8° é a maior do cinturão principal.",
+      "orbit": {
+        "semiMajorAxisAu": 2.772322475089011,
+        "eccentricity": 0.2296435321697976,
+        "inclinationDeg": 34.84614003622473,
+        "longitudeOfAscendingNodeDeg": 173.1977991340821,
+        "argumentOfPeriapsisDeg": 310.2656379003444,
+        "meanAnomalyAtEpochDeg": 352.9602856167207
+      }
+    },
+    {
+      "id": "vesta",
+      "name": "Vesta",
+      "parent": "sun",
+      "kind": "asteroid",
+      "family": "Cinturão principal",
+      "muKm3S2": 17.2882844,
+      "radiusKm": 261.385,
+      "colorRgb": "#9C8F7A",
+      "note": "GM e diâmetro medidos pela Dawn, via SBDB.",
+      "orbit": {
+        "semiMajorAxisAu": 2.361534934739072,
+        "eccentricity": 0.09002244561937413,
+        "inclinationDeg": 7.133935828421654,
+        "longitudeOfAscendingNodeDeg": 103.9514370845001,
+        "argumentOfPeriapsisDeg": 149.5866679599199,
+        "meanAnomalyAtEpochDeg": 341.0238343838706
+      }
+    },
+    {
+      "id": "hygiea",
+      "name": "Hígia",
+      "parent": "sun",
+      "kind": "asteroid",
+      "family": "Cinturão principal",
+      "muKm3S2": 7.0,
+      "radiusKm": 203.56,
+      "colorRgb": "#9C8F7A",
+      "note": "GM e diâmetro do SBDB.",
+      "orbit": {
+        "semiMajorAxisAu": 3.138421324853723,
+        "eccentricity": 0.1194647926154634,
+        "inclinationDeg": 3.842651449337091,
+        "longitudeOfAscendingNodeDeg": 283.6632054163321,
+        "argumentOfPeriapsisDeg": 314.3682343023398,
+        "meanAnomalyAtEpochDeg": 339.2148139451292
+      }
+    },
+    {
+      "id": "eros",
+      "name": "Eros",
+      "parent": "sun",
+      "kind": "nearEarthAsteroid",
+      "family": "Amor",
+      "muKm3S2": 0.0004463,
+      "radiusKm": 8.42,
+      "colorRgb": "#E08A4C",
+      "note": "GM medido pela NEAR Shoemaker, via SBDB. Raio médio de 8,42 km para um corpo de 34x11x11 km.",
+      "orbit": {
+        "semiMajorAxisAu": 1.45833940782406,
+        "eccentricity": 0.2227585463818351,
+        "inclinationDeg": 10.82844050869488,
+        "longitudeOfAscendingNodeDeg": 304.4156610725765,
+        "argumentOfPeriapsisDeg": 178.6458706145036,
+        "meanAnomalyAtEpochDeg": 57.69232527092141
+      }
+    },
+    {
+      "id": "itokawa",
+      "name": "Itokawa",
+      "parent": "sun",
+      "kind": "nearEarthAsteroid",
+      "family": "Apolo",
+      "muKm3S2": 2.1E-09,
+      "radiusKm": 0.165,
+      "colorRgb": "#E08A4C",
+      "note": "GM medido pela Hayabusa, via SBDB.",
+      "orbit": {
+        "semiMajorAxisAu": 1.324945731521161,
+        "eccentricity": 0.2805282351306318,
+        "inclinationDeg": 1.717090060975622,
+        "longitudeOfAscendingNodeDeg": 71.61397274240683,
+        "argumentOfPeriapsisDeg": 160.1384777187778,
+        "meanAnomalyAtEpochDeg": 44.09133669689545
+      }
+    },
+    {
+      "id": "bennu",
+      "name": "Bennu",
+      "parent": "sun",
+      "kind": "nearEarthAsteroid",
+      "family": "Apolo",
+      "muKm3S2": 4.8904E-09,
+      "radiusKm": 0.24222,
+      "colorRgb": "#E08A4C",
+      "note": "GM medido pela OSIRIS-REx, via SBDB.",
+      "orbit": {
+        "semiMajorAxisAu": 1.12892336246788,
+        "eccentricity": 0.2046521729007511,
+        "inclinationDeg": 6.025536314644479,
+        "longitudeOfAscendingNodeDeg": 2.178544486232719,
+        "argumentOfPeriapsisDeg": 65.67192633324575,
+        "meanAnomalyAtEpochDeg": 35.41801662915039
+      }
+    },
+    {
+      "id": "ryugu",
+      "name": "Ryugu",
+      "parent": "sun",
+      "kind": "nearEarthAsteroid",
+      "family": "Apolo",
+      "muKm3S2": 3E-08,
+      "radiusKm": 0.448,
+      "colorRgb": "#E08A4C",
+      "note": "GM medido pela Hayabusa 2, via SBDB.",
+      "orbit": {
+        "semiMajorAxisAu": 1.189053951974444,
+        "eccentricity": 0.1900160695538676,
+        "inclinationDeg": 5.88447644924516,
+        "longitudeOfAscendingNodeDeg": 251.7267381018288,
+        "argumentOfPeriapsisDeg": 211.2722442242465,
+        "meanAnomalyAtEpochDeg": 288.652827946974
+      }
+    },
+    {
+      "id": "apophis",
+      "name": "Apophis",
+      "parent": "sun",
+      "kind": "nearEarthAsteroid",
+      "family": "Aten",
+      "densityGCm3": 2.6,
+      "radiusKm": 0.17,
+      "colorRgb": "#E08A4C",
+      "note": "Raio do Horizons. Sem GM medido: densidade típica de tipo S.",
+      "orbit": {
+        "semiMajorAxisAu": 0.9223418470584992,
+        "eccentricity": 0.1913926355906355,
+        "inclinationDeg": 3.331245834187804,
+        "longitudeOfAscendingNodeDeg": 204.6568222256703,
+        "argumentOfPeriapsisDeg": 126.0648404743601,
+        "meanAnomalyAtEpochDeg": 232.1807985958005
+      }
+    },
+    {
+      "id": "achilles",
+      "name": "Aquiles",
+      "parent": "sun",
+      "kind": "trojan",
+      "family": "Troiano de Júpiter (L4)",
+      "densityGCm3": 1.3,
+      "radiusKm": 65.0495,
+      "colorRgb": "#B0706A",
+      "note": "Diâmetro do SBDB. Sem GM medido: densidade típica de troiano tipo D.",
+      "orbit": {
+        "semiMajorAxisAu": 5.182568403446787,
+        "eccentricity": 0.1486568348772998,
+        "inclinationDeg": 10.32812768369519,
+        "longitudeOfAscendingNodeDeg": 316.5831671188615,
+        "argumentOfPeriapsisDeg": 132.1362560649956,
+        "meanAnomalyAtEpochDeg": 11.75036895412703
+      }
+    },
+    {
+      "id": "hektor",
+      "name": "Héctor",
+      "parent": "sun",
+      "kind": "trojan",
+      "family": "Troiano de Júpiter (L4)",
+      "densityGCm3": 1.0,
+      "radiusKm": 112.5,
+      "colorRgb": "#B0706A",
+      "note": "Maior troiano conhecido. Raio do Horizons; densidade da órbita do satélite Skamandrios.",
+      "orbit": {
+        "semiMajorAxisAu": 5.209382515343233,
+        "eccentricity": 0.02313726659122605,
+        "inclinationDeg": 18.21022036498856,
+        "longitudeOfAscendingNodeDeg": 342.7908032229638,
+        "argumentOfPeriapsisDeg": 179.2553810563498,
+        "meanAnomalyAtEpochDeg": 313.6516963100735
+      }
+    },
+    {
+      "id": "eurybates",
+      "name": "Euríbates",
+      "parent": "sun",
+      "kind": "trojan",
+      "family": "Troiano de Júpiter (L4)",
+      "densityGCm3": 1.3,
+      "radiusKm": 31.9425,
+      "colorRgb": "#B0706A",
+      "note": "Alvo da missão Lucy. Diâmetro do SBDB; densidade típica de troiano tipo C.",
+      "orbit": {
+        "semiMajorAxisAu": 5.143715007683525,
+        "eccentricity": 0.0910488660868741,
+        "inclinationDeg": 8.082636676832978,
+        "longitudeOfAscendingNodeDeg": 43.52651130810499,
+        "argumentOfPeriapsisDeg": 26.52965987756288,
+        "meanAnomalyAtEpochDeg": 39.66877658494174
+      }
+    },
+    {
+      "id": "patroclus",
+      "name": "Pátroclo",
+      "parent": "sun",
+      "kind": "trojan",
+      "family": "Troiano de Júpiter (L5)",
+      "densityGCm3": 0.88,
+      "radiusKm": 70.181,
+      "colorRgb": "#B0706A",
+      "note": "Binário com Menécio, também alvo da Lucy. Densidade medida do par.",
+      "orbit": {
+        "semiMajorAxisAu": 5.225536833096075,
+        "eccentricity": 0.1392144878174891,
+        "inclinationDeg": 22.05177828259621,
+        "longitudeOfAscendingNodeDeg": 44.42204400778891,
+        "argumentOfPeriapsisDeg": 307.301381568998,
+        "meanAnomalyAtEpochDeg": 340.5787686187503
+      }
+    },
+    {
+      "id": "aeneas",
+      "name": "Eneias",
+      "parent": "sun",
+      "kind": "trojan",
+      "family": "Troiano de Júpiter (L5)",
+      "densityGCm3": 1.3,
+      "radiusKm": 59.01,
+      "colorRgb": "#B0706A",
+      "note": "Diâmetro do SBDB. Sem GM medido: densidade típica de troiano tipo D.",
+      "orbit": {
+        "semiMajorAxisAu": 5.179653120222099,
+        "eccentricity": 0.1045374041123879,
+        "inclinationDeg": 16.70246681203935,
+        "longitudeOfAscendingNodeDeg": 247.4544203377416,
+        "argumentOfPeriapsisDeg": 48.64492069110278,
+        "meanAnomalyAtEpochDeg": 46.15265761768797
+      }
+    },
+    {
+      "id": "chiron",
+      "name": "Quíron",
+      "parent": "sun",
+      "kind": "centaur",
+      "family": "Centauro",
+      "densityGCm3": 1.0,
+      "radiusKm": 83.0,
+      "colorRgb": "#A56ED8",
+      "note": "Primeiro centauro descoberto, e também cometa 95P: tem coma e anéis. Raio do Horizons.",
+      "orbit": {
+        "semiMajorAxisAu": 13.60507295259335,
+        "eccentricity": 0.3793438806104252,
+        "inclinationDeg": 6.941566477684404,
+        "longitudeOfAscendingNodeDeg": 209.3966703243138,
+        "argumentOfPeriapsisDeg": 339.1420137446732,
+        "meanAnomalyAtEpochDeg": 27.99722098958118
+      }
+    },
+    {
+      "id": "pholus",
+      "name": "Folo",
+      "parent": "sun",
+      "kind": "centaur",
+      "family": "Centauro",
+      "densityGCm3": 1.0,
+      "radiusKm": 95.0,
+      "colorRgb": "#A56ED8",
+      "note": "Diâmetro do SBDB. Sem massa medida: densidade típica de centauro.",
+      "orbit": {
+        "semiMajorAxisAu": 20.23910787292254,
+        "eccentricity": 0.5724788139962792,
+        "inclinationDeg": 24.69853519933214,
+        "longitudeOfAscendingNodeDeg": 119.3246008759594,
+        "argumentOfPeriapsisDeg": 354.4986568816179,
+        "meanAnomalyAtEpochDeg": 32.74530853219506
+      }
+    },
+    {
+      "id": "halley",
+      "name": "1P/Halley",
+      "parent": "sun",
+      "kind": "comet",
+      "family": "Cometa tipo Halley",
+      "densityGCm3": 0.6,
+      "radiusKm": 5.5,
+      "colorRgb": "#6FD8D8",
+      "note": "Órbita retrógrada, com inclinação de 162°. Raio do Horizons; densidade típica de núcleo cometário.",
+      "orbit": {
+        "semiMajorAxisAu": 17.92150741181706,
+        "eccentricity": 0.967270202449622,
+        "inclinationDeg": 162.19604262313,
+        "longitudeOfAscendingNodeDeg": 59.5078653546686,
+        "argumentOfPeriapsisDeg": 112.4496220272734,
+        "meanAnomalyAtEpochDeg": 65.84890057549084
+      }
+    },
+    {
+      "id": "encke",
+      "name": "2P/Encke",
+      "parent": "sun",
+      "kind": "comet",
+      "family": "Cometa tipo Encke",
+      "densityGCm3": 0.6,
+      "radiusKm": 2.4,
+      "colorRgb": "#6FD8D8",
+      "note": "O menor período conhecido entre os cometas: 3,3 anos. Diâmetro do SBDB.",
+      "orbit": {
+        "semiMajorAxisAu": 2.217547075218005,
+        "eccentricity": 0.8470530564826724,
+        "inclinationDeg": 11.76459759877654,
+        "longitudeOfAscendingNodeDeg": 334.6320833809893,
+        "argumentOfPeriapsisDeg": 186.4698903368474,
+        "meanAnomalyAtEpochDeg": 284.7450660040845
+      }
+    },
+    {
+      "id": "tempel1",
+      "name": "9P/Tempel 1",
+      "parent": "sun",
+      "kind": "comet",
+      "family": "Cometa da família de Júpiter",
+      "densityGCm3": 0.47,
+      "radiusKm": 3.0,
+      "colorRgb": "#6FD8D8",
+      "note": "Alvo do impactador Deep Impact, que é de onde vem a densidade medida.",
+      "orbit": {
+        "semiMajorAxisAu": 3.11833601526319,
+        "eccentricity": 0.5189587925371144,
+        "inclinationDeg": 10.54134509967927,
+        "longitudeOfAscendingNodeDeg": 68.9664958270641,
+        "argumentOfPeriapsisDeg": 178.9115247963565,
+        "meanAnomalyAtEpochDeg": 359.8000072860011
+      }
+    },
+    {
+      "id": "churyumov",
+      "name": "67P/Churyumov-Gerasimenko",
+      "parent": "sun",
+      "kind": "comet",
+      "family": "Cometa da família de Júpiter",
+      "muKm3S2": 6.622E-07,
+      "radiusKm": 1.7,
+      "colorRgb": "#6FD8D8",
+      "note": "GM medido pela Rosetta, via SBDB.",
+      "orbit": {
+        "semiMajorAxisAu": 3.510982603418104,
+        "eccentricity": 0.6314071458158499,
+        "inclinationDeg": 7.122423555367961,
+        "longitudeOfAscendingNodeDeg": 50.99152765897843,
+        "argumentOfPeriapsisDeg": 11.34988861633243,
+        "meanAnomalyAtEpochDeg": 216.2305564932671
+      }
+    },
+    {
+      "id": "swifttuttle",
+      "name": "109P/Swift-Tuttle",
+      "parent": "sun",
+      "kind": "comet",
+      "family": "Cometa tipo Halley",
+      "densityGCm3": 0.6,
+      "radiusKm": 13.0,
+      "colorRgb": "#6FD8D8",
+      "note": "Corpo de origem das Perseidas. Diâmetro do SBDB.",
+      "orbit": {
+        "semiMajorAxisAu": 26.34271940569137,
+        "eccentricity": 0.9631624069830728,
+        "inclinationDeg": 113.3406285992539,
+        "longitudeOfAscendingNodeDeg": 139.5133225675405,
+        "argumentOfPeriapsisDeg": 153.2379818767868,
+        "meanAnomalyAtEpochDeg": 18.77942625229999
+      }
+    },
+    {
+      "id": "pluto",
+      "name": "Plutão",
+      "parent": "sun",
+      "kind": "transNeptunian",
+      "family": "Plutino",
+      "muKm3S2": 869.326,
+      "radiusKm": 1188.3,
+      "colorRgb": "#D8C0A8",
+      "note": "Planeta anão. GM e raio pós-New Horizons, via Horizons. Sem Caronte: aqui Plutão orbita o Sol sozinho.",
+      "orbit": {
+        "semiMajorAxisAu": 39.57126152242962,
+        "eccentricity": 0.2494484952274253,
+        "inclinationDeg": 17.23565301572196,
+        "longitudeOfAscendingNodeDeg": 110.03993995362,
+        "argumentOfPeriapsisDeg": 115.178665976094,
+        "meanAnomalyAtEpochDeg": 14.14365453678677
+      }
+    },
+    {
+      "id": "eris",
+      "name": "Éris",
+      "parent": "sun",
+      "kind": "transNeptunian",
+      "family": "Disco disperso",
+      "muKm3S2": 1108.0,
+      "radiusKm": 1163.0,
+      "colorRgb": "#8FA8E0",
+      "note": "Planeta anão, e o mais massivo dos transnetunianos. Massa da órbita de Disnomia.",
+      "orbit": {
+        "semiMajorAxisAu": 68.13986865232954,
+        "eccentricity": 0.4325050983099001,
+        "inclinationDeg": 43.74050564207168,
+        "longitudeOfAscendingNodeDeg": 36.12852074096747,
+        "argumentOfPeriapsisDeg": 150.8448096449848,
+        "meanAnomalyAtEpochDeg": 194.2903409988061
+      }
+    },
+    {
+      "id": "makemake",
+      "name": "Makemake",
+      "parent": "sun",
+      "kind": "transNeptunian",
+      "family": "Clássico (cubewano)",
+      "densityGCm3": 1.7,
+      "radiusKm": 715.0,
+      "colorRgb": "#8FA8E0",
+      "note": "Planeta anão. Raio por ocultação estelar; sem massa bem determinada, densidade estimada.",
+      "orbit": {
+        "semiMajorAxisAu": 45.37205778306633,
+        "eccentricity": 0.1645232903298833,
+        "inclinationDeg": 29.00018553920377,
+        "longitudeOfAscendingNodeDeg": 79.2749060739329,
+        "argumentOfPeriapsisDeg": 296.2809991935295,
+        "meanAnomalyAtEpochDeg": 139.7201624508081
+      }
+    },
+    {
+      "id": "haumea",
+      "name": "Haumea",
+      "parent": "sun",
+      "kind": "transNeptunian",
+      "family": "Clássico (cubewano)",
+      "muKm3S2": 267.4,
+      "radiusKm": 780.0,
+      "colorRgb": "#8FA8E0",
+      "note": "Planeta anão alongado pela rotação de 3,9 h. Raio da esfera de volume equivalente; massa das órbitas das luas.",
+      "orbit": {
+        "semiMajorAxisAu": 42.90925766086671,
+        "eccentricity": 0.1999209495775153,
+        "inclinationDeg": 28.20614176692041,
+        "longitudeOfAscendingNodeDeg": 121.9332385932473,
+        "argumentOfPeriapsisDeg": 240.5907776701779,
+        "meanAnomalyAtEpochDeg": 189.5952699212157
+      }
+    },
+    {
+      "id": "quaoar",
+      "name": "Quaoar",
+      "parent": "sun",
+      "kind": "transNeptunian",
+      "family": "Clássico (cubewano)",
+      "muKm3S2": 80.1,
+      "radiusKm": 545.0,
+      "colorRgb": "#8FA8E0",
+      "note": "Massa da órbita de Weywot. Tem anel fora do limite de Roche, o que ainda não se explicou.",
+      "orbit": {
+        "semiMajorAxisAu": 43.13300737717343,
+        "eccentricity": 0.0395100738360675,
+        "inclinationDeg": 8.005089469375157,
+        "longitudeOfAscendingNodeDeg": 189.0799904468402,
+        "argumentOfPeriapsisDeg": 163.785490698647,
+        "meanAnomalyAtEpochDeg": 258.9555093443548
+      }
+    },
+    {
+      "id": "orcus",
+      "name": "Orco",
+      "parent": "sun",
+      "kind": "transNeptunian",
+      "family": "Plutino",
+      "muKm3S2": 36.6,
+      "radiusKm": 458.5,
+      "colorRgb": "#8FA8E0",
+      "note": "Plutino em ressonância 2:3 com Netuno, como Plutão. Massa sem a lua Vanth.",
+      "orbit": {
+        "semiMajorAxisAu": 39.26252228984306,
+        "eccentricity": 0.225751142405386,
+        "inclinationDeg": 20.53929449722906,
+        "longitudeOfAscendingNodeDeg": 268.45724311407,
+        "argumentOfPeriapsisDeg": 73.7509867753638,
+        "meanAnomalyAtEpochDeg": 150.0400595978003
+      }
+    },
+    {
+      "id": "sedna",
+      "name": "Sedna",
+      "parent": "sun",
+      "kind": "transNeptunian",
+      "family": "Destacado",
+      "densityGCm3": 1.5,
+      "radiusKm": 498.0,
+      "colorRgb": "#8FA8E0",
+      "note": "Periélio de 76 UA, longe demais para Netuno explicar: é o protótipo dos destacados. Sem massa medida.",
+      "orbit": {
+        "semiMajorAxisAu": 549.8732686054069,
+        "eccentricity": 0.8609804671093849,
+        "inclinationDeg": 11.92524941582647,
+        "longitudeOfAscendingNodeDeg": 144.3169286137796,
+        "argumentOfPeriapsisDeg": 310.7328635633867,
+        "meanAnomalyAtEpochDeg": 357.9014766680082
+      }
+    }
+  ]
+}

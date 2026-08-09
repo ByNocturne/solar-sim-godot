@@ -166,6 +166,85 @@ public sealed class SimEngine
     public double SphereOfInfluenceKm(string bodyId)
         => SphereOfInfluenceOf(_hierarchy.IndexOf(bodyId));
 
+    /// <summary>
+    /// Os dois limites de Roche deste corpo em relação ao pai, e o que a maré do pai faz
+    /// com ele onde ele passa. Tudo zero para a raiz e para quem não tem massa ou raio.
+    /// </summary>
+    /// <remarks>
+    /// A pergunta é sempre sobre o par: um corpo não tem limite de Roche sozinho, e sim
+    /// contra o pai que o puxa. Por isso a consulta é pelo satélite e não pelo planeta,
+    /// ao contrário da zona de anel.
+    /// </remarks>
+    public SatelliteTides TidesOn(string bodyId, double julianDate)
+    {
+        var body = _hierarchy.Get(bodyId);
+
+        if (body.ParentId is not { } parentId || body.RadiusKm <= 0.0 || body.MuKm3S2 <= 0.0)
+        {
+            return default;
+        }
+
+        // O GM do pai, e não o que rege a órbita deste corpo: para a Lua, o segundo é o do
+        // Sol, que é quem rege a órbita da Terra que ela acompanha.
+        var parentMu = _hierarchy.Get(parentId).MuKm3S2;
+
+        var rigid = RocheLimit.RigidKm(body.RadiusKm, body.MuKm3S2, parentMu);
+        var fluid = RocheLimit.FluidKm(body.RadiusKm, body.MuKm3S2, parentMu);
+
+        // O periápside da órbita de hoje, e não o de J2000: com a precessão e as taxas, a
+        // distância de maior aproximação é do instante consultado.
+        var periapsisKm = ElementsAt(bodyId, julianDate) is { } elements
+            ? elements.PeriapsisKm
+            : 0.0;
+
+        return new SatelliteTides
+        {
+            RigidLimitKm = rigid,
+            FluidLimitKm = fluid,
+            PeriapsisKm = periapsisKm,
+            Fate = RocheLimit.FateAt(periapsisKm, rigid, fluid),
+        };
+    }
+
+    /// <summary>
+    /// A faixa em que este corpo poderia ter um anel, e se poderia. Consultada pelo
+    /// hospedeiro: quem tem anel é o planeta, não o escombro.
+    /// </summary>
+    /// <remarks>
+    /// A distância que entra na linha de gelo é o semi-eixo maior, e não a de hoje. Ter
+    /// anel é propriedade do corpo, e não do mês: com a distância instantânea, Ceres
+    /// cruzaria a linha duas vezes por volta e o veredito piscaria enquanto o tempo corre.
+    /// </remarks>
+    public RingZone RingZoneOf(string bodyId)
+    {
+        var body = _hierarchy.Get(bodyId);
+
+        return RingEvaluator.Evaluate(
+            body.MuKm3S2,
+            body.RadiusKm,
+            body.ParentId == Root.Id,
+            HeliocentricSemiMajorAxisAu(body));
+    }
+
+    /// <summary>
+    /// O semi-eixo maior em torno da raiz do corpo ou do planeta que o carrega. Titã está
+    /// tão além da linha de gelo quanto Saturno, e responder zero para uma lua faria o
+    /// relatório recusá-la pela razão errada.
+    /// </summary>
+    private double HeliocentricSemiMajorAxisAu(CelestialBodyData body)
+    {
+        var current = body;
+
+        while (current.ParentId is { } parentId && parentId != Root.Id)
+        {
+            current = _hierarchy.Get(parentId);
+        }
+
+        return current.Elements is { } elements
+            ? Math.Abs(elements.SemiMajorAxisKm) / AstroConstants.AstronomicalUnitKm
+            : 0.0;
+    }
+
     /// <summary>Identificadores dos corpos acrescentados em runtime.</summary>
     public IReadOnlyCollection<string> DynamicBodyIds => _trajectories.Keys;
 

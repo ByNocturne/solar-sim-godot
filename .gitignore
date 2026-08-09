@@ -25,6 +25,10 @@ mono_crash.*.json
 # Quadros do modo Movie Maker, usados para conferir a tela e depois descartados
 frames/
 
+# Respostas cruas do JPL, baixadas a mao ao montar o catalogo de corpos menores. A fonte
+# versionada e o CSV curado em Tools/CatalogImporter/source; isto aqui e o rascunho dele.
+.cache-fetch/
+
 # Rascunhos pessoais; o que vira plano vai para o backlog do ROADMAP
 Ideias para o futuro.txt
 metodo-de-trabalho.md

@@ -179,14 +179,15 @@ public sealed class HierarchyTests
     }
 
     [Fact]
-    public void SistemaTemOSolOsOitoPlanetasEAsSeisLuas()
+    public void SistemaTemOSolOsOitoPlanetasEAsOitoLuas()
     {
         var sim = SolarSystem.NewEngine();
 
         string[] esperados =
         [
-            "callisto", "earth", "europa", "ganymede", "io", "jupiter", "mars", "mercury",
-            "moon", "neptune", "saturn", "sun", "titan", "uranus", "venus",
+            "callisto", "deimos", "earth", "europa", "ganymede", "io", "jupiter", "mars",
+            "mercury", "moon", "neptune", "phobos", "saturn", "sun", "titan", "uranus",
+            "venus",
         ];
 
         Assert.Equal(

@@ -1,6 +1,7 @@
 using System.Globalization;
 using SolarSim.Bridge;
 using SolarSim.Engine.Core;
+using SolarSim.Engine.Models;
 
 namespace SolarSim.Tests;
 
@@ -134,6 +135,49 @@ public sealed class DisplayFormatTests
         var lines = TeachingExplain.LinesFor(report);
         Assert.Contains(lines, l => l.Contains("BHI", StringComparison.Ordinal));
         Assert.Contains(lines, l => l.Contains("água", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ClassificacaoJuntaClasseEFamiliaQuandoElasDizemCoisasDiferentes()
+        => Assert.Equal(
+            "Asteroide · Cinturão principal",
+            DisplayFormat.Classification(BodyKind.Asteroid, "Cinturão principal"));
+
+    /// <summary>
+    /// "Troiano · Troiano de Júpiter (L4)" gastaria duas linhas da ficha para gaguejar.
+    /// </summary>
+    [Fact]
+    public void ClassificacaoNaoRepeteAClasseQueAFamiliaJaDiz()
+    {
+        Assert.Equal(
+            "Troiano de Júpiter (L4)",
+            DisplayFormat.Classification(BodyKind.Trojan, "Troiano de Júpiter (L4)"));
+
+        Assert.Equal("Centauro", DisplayFormat.Classification(BodyKind.Centaur, "Centauro"));
+    }
+
+    [Fact]
+    public void ClassificacaoSemFamiliaEhSoAClasse()
+        => Assert.Equal("Cometa", DisplayFormat.Classification(BodyKind.Comet, null));
+
+    /// <summary>
+    /// Corpo menor tem GM abaixo de um, e arredondá-lo para inteiro seria escrever que o
+    /// corpo não tem massa logo acima de uma esfera de influência que existe.
+    /// </summary>
+    [Fact]
+    public void GmDeCorpoPequenoNaoEhArredondadoParaZero()
+    {
+        Assert.Equal("0,398 km³/s²", DisplayFormat.GravitationalParameter(0.3984));
+        Assert.Equal("62,628 km³/s²", DisplayFormat.GravitationalParameter(62.6284));
+    }
+
+    [Fact]
+    public void GmDeCorpoGrandeContinuaInteiro()
+    {
+        Assert.Equal("398.600 km³/s²", DisplayFormat.GravitationalParameter(398_600.4));
+        Assert.Equal(
+            "132.712.440.018 km³/s²",
+            DisplayFormat.GravitationalParameter(132_712_440_018.0));
     }
 
     /// <summary>

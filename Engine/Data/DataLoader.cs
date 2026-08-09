@@ -29,9 +29,50 @@ public static class DataLoader
     };
 
     /// <summary>
-    /// Devolve os corpos já em ordem de avaliação: o pai sempre antes do filho.
+    /// Lê um sistema completo, com raiz. Devolve os corpos já em ordem de avaliação: o pai
+    /// sempre antes do filho.
     /// </summary>
     public static IReadOnlyList<CelestialBodyData> Parse(string json)
+    {
+        var parsed = ParseBodies(json, "a raiz");
+
+        return BodyHierarchy.Create(parsed).InEvaluationOrder;
+    }
+
+    /// <summary>
+    /// Lê um catálogo: um arquivo que acrescenta corpos menores a um sistema que já
+    /// existe, e por isso não tem raiz nem hierarquia própria.
+    /// </summary>
+    /// <remarks>
+    /// A ordem de avaliação e a validação de pai, ciclo e id duplicado ficam para quem
+    /// junta as duas listas, porque nenhuma das duas responde sozinha se o pai existe. É a
+    /// mesma <see cref="BodyHierarchy.Create"/> de sempre, aplicada à união.
+    /// </remarks>
+    public static IReadOnlyList<CelestialBodyData> ParseCatalog(string json)
+    {
+        var parsed = ParseBodies(json, "um corpo");
+
+        foreach (var body in parsed)
+        {
+            if (body.ParentId is null)
+            {
+                throw new SystemDataException(
+                    $"Corpo '{body.Id}': em um catálogo todo corpo declara 'parent', porque "
+                        + "a raiz vem do arquivo do sistema.");
+            }
+
+            if (!BodyKinds.IsMinor(body.Kind))
+            {
+                throw new SystemDataException(
+                    $"Corpo '{body.Id}': o catálogo é de corpos menores, e "
+                        + $"'{BodyKinds.JsonName(body.Kind)}' não é uma classe de corpo menor.");
+            }
+        }
+
+        return parsed;
+    }
+
+    private static CelestialBodyData[] ParseBodies(string json, string minimumDescription)
     {
         ArgumentNullException.ThrowIfNull(json);
 
@@ -57,12 +98,10 @@ public static class DataLoader
         if (document.Bodies is not { Length: > 0 } bodies)
         {
             throw new SystemDataException(
-                "O campo 'bodies' é obrigatório e precisa ter ao menos a raiz.");
+                $"O campo 'bodies' é obrigatório e precisa ter ao menos {minimumDescription}.");
         }
 
-        var parsed = Array.ConvertAll(bodies, ToBodyData);
-
-        return BodyHierarchy.Create(parsed).InEvaluationOrder;
+        return Array.ConvertAll(bodies, ToBodyData);
     }
 
     private static void RequireSupportedSchema(int? schemaVersion)
@@ -114,18 +153,13 @@ public static class DataLoader
             throw new SystemDataException($"Corpo '{id}': o campo 'name' é obrigatório.");
         }
 
-        var mu = RequireFinite(dto.MuKm3S2, id, "muKm3S2");
-        if (mu < 0.0)
-        {
-            throw new SystemDataException($"Corpo '{id}': 'muKm3S2' não pode ser negativo.");
-        }
-
         var radius = RequireFinite(dto.RadiusKm, id, "radiusKm");
         if (radius <= 0.0)
         {
             throw new SystemDataException($"Corpo '{id}': 'radiusKm' precisa ser positivo.");
         }
 
+        var mu = GravitationalParameter(dto, id, radius);
         var elements = ToElements(dto, id);
 
         return new CelestialBodyData
@@ -133,6 +167,8 @@ public static class DataLoader
             Id = id,
             Name = dto.Name,
             ParentId = dto.Parent,
+            Kind = ToKind(dto.Kind, id),
+            Family = dto.Family,
             MuKm3S2 = mu,
             RadiusKm = radius,
             J2 = Oblateness(dto, id),
@@ -141,6 +177,66 @@ public static class DataLoader
             Elements = elements,
             Rates = ToRates(dto.Orbit?.Rates, elements, id),
         };
+    }
+
+    /// <summary>
+    /// O GM medido, ou o estimado a partir da densidade. Um dos dois, nunca os dois: se o
+    /// GM foi determinado, ele é o dado, e a densidade ao lado só permitiria que os dois
+    /// discordassem sem que ninguém percebesse.
+    /// </summary>
+    private static double GravitationalParameter(BodyDto dto, string id, double radiusKm)
+    {
+        switch (dto.MuKm3S2, dto.DensityGCm3)
+        {
+            case ({ } mu, null):
+                if (!double.IsFinite(mu))
+                {
+                    throw new SystemDataException($"Corpo '{id}': o campo 'muKm3S2' não é um número.");
+                }
+
+                if (mu < 0.0)
+                {
+                    throw new SystemDataException($"Corpo '{id}': 'muKm3S2' não pode ser negativo.");
+                }
+
+                return mu;
+
+            case (null, { } density):
+                if (!double.IsFinite(density) || density <= 0.0)
+                {
+                    throw new SystemDataException(
+                        $"Corpo '{id}': 'densityGCm3' precisa ser positiva. Ela existe para "
+                            + "estimar o GM de quem não teve a massa medida.");
+                }
+
+                return BodyMass.MuFromDensity(density, radiusKm);
+
+            case (null, null):
+                throw new SystemDataException(
+                    $"Corpo '{id}': informe 'muKm3S2' ou 'densityGCm3'.");
+
+            default:
+                throw new SystemDataException(
+                    $"Corpo '{id}': 'muKm3S2' e 'densityGCm3' estão ambos preenchidos. O GM "
+                        + "medido dispensa a estimativa.");
+        }
+    }
+
+    private static BodyKind ToKind(string? kind, string id)
+    {
+        if (kind is null)
+        {
+            return BodyKind.Unspecified;
+        }
+
+        if (!BodyKinds.TryParse(kind, out var parsed))
+        {
+            throw new SystemDataException(
+                $"Corpo '{id}': 'kind' vale '{kind}', que não é uma classe conhecida. "
+                    + $"As classes são: {BodyKinds.JsonNames()}.");
+        }
+
+        return parsed;
     }
 
     private static double Oblateness(BodyDto dto, string id)
@@ -420,8 +516,18 @@ public static class DataLoader
         [JsonPropertyName("parent")]
         public string? Parent { get; init; }
 
+        [JsonPropertyName("kind")]
+        public string? Kind { get; init; }
+
+        [JsonPropertyName("family")]
+        public string? Family { get; init; }
+
         [JsonPropertyName("muKm3S2")]
         public double? MuKm3S2 { get; init; }
+
+        /// <summary>Alternativa ao <c>muKm3S2</c> para quem não teve a massa medida.</summary>
+        [JsonPropertyName("densityGCm3")]
+        public double? DensityGCm3 { get; init; }
 
         [JsonPropertyName("radiusKm")]
         public double? RadiusKm { get; init; }

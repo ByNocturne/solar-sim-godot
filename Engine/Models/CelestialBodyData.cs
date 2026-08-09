@@ -18,6 +18,20 @@ public sealed record CelestialBodyData
     /// <summary>Corpo em torno do qual este orbita. Nulo apenas para a raiz.</summary>
     public string? ParentId { get; init; }
 
+    /// <summary>
+    /// Classe dinâmica do corpo. Ausente no arquivo, vale
+    /// <see cref="BodyKind.Unspecified"/>, que nunca é filtrado e conta como corpo maior
+    /// para efeito de escala.
+    /// </summary>
+    public BodyKind Kind { get; init; }
+
+    /// <summary>
+    /// Subclassificação livre dentro da classe — "Cinturão principal", "Apolo",
+    /// "Troiano de Júpiter (L4)", "Plutino". Texto, e não enumeração, porque a taxonomia
+    /// de corpos menores muda mais rápido que o motor e nada aqui depende do valor.
+    /// </summary>
+    public string? Family { get; init; }
+
     /// <summary>GM deste corpo, em km³/s². Usado pelos filhos, não por ele mesmo.</summary>
     public double MuKm3S2 { get; init; }
 

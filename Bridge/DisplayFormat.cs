@@ -1,5 +1,6 @@
 using System.Globalization;
 using SolarSim.Engine.Core;
+using SolarSim.Engine.Models;
 
 namespace SolarSim.Bridge;
 
@@ -64,8 +65,18 @@ public static class DisplayFormat
     public static string Angle(double radians)
         => Format(AstroConstants.RadiansToDegrees(radians), "N3", "°");
 
+    /// <summary>
+    /// GM em km³/s². A casa decimal aparece quando o corpo é pequeno o bastante para
+    /// precisar dela.
+    /// </summary>
+    /// <remarks>
+    /// Arredondar sempre para inteiro servia enquanto o menor corpo do arquivo era a Lua,
+    /// com GM de 4.903. O catálogo de corpos menores trouxe Héctor, cujo GM derivado é
+    /// 0,39 — e "0 km³/s²" não é um número arredondado, é a afirmação falsa de que o corpo
+    /// não tem massa, logo acima de uma esfera de influência que existe.
+    /// </remarks>
     public static string GravitationalParameter(double muKm3S2)
-        => Format(muKm3S2, "N0", " km³/s²");
+        => Format(muKm3S2, Math.Abs(muKm3S2) < 100.0 ? "N3" : "N0", " km³/s²");
 
     /// <summary>
     /// Abaixo disso a precessão se lê melhor como o tempo de uma volta inteira. O corte
@@ -148,6 +159,94 @@ public static class DisplayFormat
 
     public static string RadiationRelative(double relative)
         => Format(relative, "N2", "× Terra");
+
+    /// <summary>
+    /// A classe do corpo em português. A tradução mora aqui, e não no enumerador, porque
+    /// o enumerador é domínio e o texto é fronteira: o mesmo motor precisa poder falar
+    /// outra língua sem que <see cref="BodyKind"/> mude.
+    /// </summary>
+    public static string Kind(BodyKind kind) => kind switch
+    {
+        BodyKind.Star => "Estrela",
+        BodyKind.Planet => "Planeta",
+        BodyKind.Moon => "Satélite",
+        BodyKind.Asteroid => "Asteroide",
+        BodyKind.NearEarthAsteroid => "Asteroide próximo da Terra",
+        BodyKind.Trojan => "Troiano",
+        BodyKind.Centaur => "Centauro",
+        BodyKind.Comet => "Cometa",
+        BodyKind.TransNeptunian => "Transnetuniano",
+        BodyKind.Spacecraft => "Sonda",
+        _ => Absent,
+    };
+
+    /// <summary>
+    /// Classe e família na mesma linha, sem repetir a classe quando a família já a diz.
+    /// </summary>
+    /// <remarks>
+    /// A família é o que o corpo menor tem de particular, e quase sempre acrescenta à
+    /// classe: "Asteroide · Cinturão principal" diz duas coisas. Mas "Troiano de Júpiter
+    /// (L4)" já começa dizendo troiano, e "Troiano · Troiano de Júpiter (L4)" gasta uma
+    /// linha inteira para gaguejar.
+    /// </remarks>
+    public static string Classification(BodyKind kind, string? family)
+    {
+        var name = Kind(kind);
+
+        if (family is null || family.Length == 0)
+        {
+            return name;
+        }
+
+        if (name == Absent || family.StartsWith(name, StringComparison.OrdinalIgnoreCase))
+        {
+            return family;
+        }
+
+        return $"{name} · {family}";
+    }
+
+    /// <summary>
+    /// O destino de um satélite sob a maré do pai, com a folga que o sustenta.
+    /// </summary>
+    /// <remarks>
+    /// O número acompanha a palavra porque sozinha ela mente por omissão nas duas pontas:
+    /// "estável" vale tanto para a Lua, a vinte vezes o limite, quanto para um corpo que
+    /// passa a um por cento dele. A folga é sobre o limite fluido, que é o que decide
+    /// primeiro.
+    /// </remarks>
+    public static string Fate(in SatelliteTides tides)
+    {
+        var name = tides.Fate switch
+        {
+            SatelliteFate.Stable => "estável",
+            SatelliteFate.AtRisk => "em risco",
+            SatelliteFate.Disrupted => "desfeito",
+            _ => Absent,
+        };
+
+        if (tides.Fate == SatelliteFate.Unknown)
+        {
+            return name;
+        }
+
+        return $"{name} ({Format(tides.MarginOverFluid, "N2")}× Roche)";
+    }
+
+    /// <summary>A faixa de anel possível, em raios do corpo.</summary>
+    public static string RingZone(in RingZone zone)
+    {
+        if (!zone.HasRoom)
+        {
+            return Absent;
+        }
+
+        var outer = zone.OuterRadiusKm / zone.InnerRadiusKm;
+
+        var span = $"até {Format(outer, "N2")} raios";
+
+        return zone.IsPlausible ? span : $"{span} (sem gelo)";
+    }
 
     /// <summary>
     /// Um número que não é finito não vira texto: vira traço. O apoápside de uma

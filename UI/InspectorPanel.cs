@@ -23,6 +23,14 @@ public partial class InspectorPanel : CanvasLayer
 
     private const string Absent = "—";
 
+    /// <summary>
+    /// Acima desta folga sobre o limite de Roche a linha da maré some. "Estável a 622
+    /// vezes o limite" é o que o inspetor diria de Saturno contra o Sol, e é uma linha
+    /// gasta para informar que nada acontece. Abaixo de 25 a maré ainda é uma quantidade
+    /// da qual se fala: a Lua entra com 20, Io com 3,4 e Fobos com 0,87.
+    /// </summary>
+    private const double TidalFateMarginCeiling = 25.0;
+
     private readonly Label[] _captions = new Label[RowCount];
     private readonly Label[] _values = new Label[RowCount];
 
@@ -32,6 +40,7 @@ public partial class InspectorPanel : CanvasLayer
 
     private enum Row
     {
+        Classification,
         Orbits,
         Radius,
         GravitationalParameter,
@@ -51,6 +60,8 @@ public partial class InspectorPanel : CanvasLayer
         Periapsis,
         Apoapsis,
         SphereOfInfluence,
+        TidalFate,
+        RingZone,
         SurfaceTemperature,
         EquilibriumTemperature,
         SurfacePressure,
@@ -64,6 +75,8 @@ public partial class InspectorPanel : CanvasLayer
     /// <summary>Glossário curto ao passar o mouse no rótulo da linha.</summary>
     private static readonly Dictionary<Row, string> Glossary = new()
     {
+        [Row.Classification] =
+            "Classe dinâmica do corpo e, quando há, a família a que pertence dentro dela — cinturão principal, troiano de um dos pontos de Lagrange de Júpiter, plutino.",
         [Row.Orbits] =
             "Corpo em torno do qual este orbita (o atrator atual). Em sondas, pode mudar ao cruzar uma esfera de influência.",
         [Row.Radius] = "Raio médio do corpo, em quilômetros.",
@@ -93,6 +106,10 @@ public partial class InspectorPanel : CanvasLayer
         [Row.Apoapsis] = "Distância máxima ao atrator. Não existe em órbita aberta.",
         [Row.SphereOfInfluence] =
             "Raio aproximado em que este corpo domina a atração sobre uma sonda (cônicas emendadas).",
+        [Row.TidalFate] =
+            "O que a maré do corpo pai faz com este satélite, e a que múltiplo do limite de Roche fluido ele passa no periápside. Abaixo de 1 a maré vence a gravidade própria e o corpo se desmancha; Fobos passa a 0,87.",
+        [Row.RingZone] =
+            "Faixa em que escombros de gelo não conseguem se juntar em lua, medida em raios do corpo. É onde um anel pode existir — em Saturno ela termina na borda do anel A.",
         [Row.SurfaceTemperature] =
             "Temperatura de superfície estimada (equilíbrio radiativo + estufa paramétrica).",
         [Row.EquilibriumTemperature] =
@@ -139,6 +156,25 @@ public partial class InspectorPanel : CanvasLayer
             _values[row].HorizontalAlignment = HorizontalAlignment.Right;
             _values[row].SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
             _values[row].MouseFilter = Control.MouseFilterEnum.Stop;
+
+            // A largura do inspetor é do layout, e nenhum valor pode disputá-la. Um rótulo
+            // do Godot pede como largura mínima o texto inteiro, e a caixa cede: bastou a
+            // classe de Ceres, "Asteroide · Cinturão principal", para empurrar a coluna
+            // toda para fora da borda direita e cortar cada linha da ficha, e não só a
+            // linha comprida.
+            if ((Row)row == Row.Classification)
+            {
+                // Esta é a única prosa da ficha, e cortá-la esconderia justamente a
+                // família, que é o que o corpo menor tem de particular. Quebra em duas
+                // linhas: aí a largura mínima passa a ser a da maior palavra.
+                _values[row].AutowrapMode = TextServer.AutowrapMode.Word;
+            }
+            else
+            {
+                _values[row].ClipText = true;
+                _values[row].TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
+            }
+
             if (Glossary.TryGetValue((Row)row, out tip))
             {
                 _values[row].TooltipText = tip;
@@ -200,6 +236,12 @@ public partial class InspectorPanel : CanvasLayer
         string OrbitOnly(string value) => isRoot ? Absent : value;
 
         var hasOwnParent = !isRoot && parent != report.RootName;
+
+        Show(Row.Classification, report.Kind != BodyKind.Unspecified || report.Family is not null);
+        Set(
+            Row.Classification,
+            "Classe",
+            DisplayFormat.Classification(report.Kind, report.Family));
 
         Set(
             Row.Orbits,
@@ -285,6 +327,16 @@ public partial class InspectorPanel : CanvasLayer
             Row.SphereOfInfluence,
             "Esfera de influência",
             DisplayFormat.Distance(report.SphereOfInfluenceKm));
+
+        Show(
+            Row.TidalFate,
+            report.Tides.IsKnown && report.Tides.MarginOverFluid < TidalFateMarginCeiling);
+        Set(Row.TidalFate, "Maré do pai", DisplayFormat.Fate(report.Tides));
+
+        // A faixa só interessa em quem poderia hospedá-la. Mostrá-la em toda pedra do
+        // cinturão encheria a ficha de uma linha que diz sempre a mesma coisa.
+        Show(Row.RingZone, report.Rings.IsPlausible);
+        Set(Row.RingZone, "Zona de anel", DisplayFormat.RingZone(report.Rings));
 
         var showEnvironment = !isRoot;
         Show(Row.SurfaceTemperature, showEnvironment);

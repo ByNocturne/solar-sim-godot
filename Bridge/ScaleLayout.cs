@@ -36,7 +36,9 @@ public sealed class ScaleLayout
 
         foreach (var body in bodies)
         {
-            if (body.ParentId is not { } parentId || body.Elements is not { } elements)
+            if (body.ParentId is not { } parentId
+                || body.Elements is not { } elements
+                || !DefinesLevel(body))
             {
                 continue;
             }
@@ -56,6 +58,17 @@ public sealed class ScaleLayout
                     depthById.GetValueOrDefault(entry.Key) + 1, viewportHeightPixels)),
             StringComparer.Ordinal);
     }
+
+    /// <summary>
+    /// Os corpos menores ficam de fora do dimensionamento de propósito. A curva perceptual
+    /// é normalizada pela maior órbita do nível, então um único objeto distante encolhe
+    /// todo o resto: com Sedna incluído no cálculo, cujo afélio é 1023 UA, a órbita da
+    /// Terra perderia dois terços do raio na tela para acomodar um ponto que passa a maior
+    /// parte de onze mil anos invisível. Fora do cálculo, ele continua sendo desenhado — a
+    /// curva não satura, apenas o coloca além do raio nominal do nível. A consequência que
+    /// importa é esta: acrescentar corpos ao catálogo não mexe um pixel no Sistema Solar.
+    /// </summary>
+    private static bool DefinesLevel(CelestialBodyData body) => !BodyKinds.IsMinor(body.Kind);
 
     /// <summary>
     /// Quantos pixels a maior órbita de cada profundidade ocupa. Os satélites cabem em uma

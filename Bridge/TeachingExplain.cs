@@ -90,6 +90,12 @@ public static class TeachingExplain
             "subsurface_ocean" => "Oceano líquido sob gelo (aquecimento de maré).",
             "no_liquid_water" => "Sem água líquida neste modelo.",
             "strong_tidal_heating" => "Aquecimento de maré intenso.",
+            "inside_fluid_roche" =>
+                "Dentro do limite de Roche fluido: a maré do corpo pai alonga o satélite, e uma pilha de escombros não se segura.",
+            "inside_rigid_roche" =>
+                "Dentro do limite de Roche rígido: nem um corpo coeso se mantém pela gravidade própria a esta distância.",
+            "ring_zone" =>
+                "Tem faixa onde escombros de gelo não se juntam em lua — é onde um anel pode existir.",
             "polar_ice" => "Calotas polares / gelo polar no modelo de zonas.",
             "o2_ch4_disequilibrium" => "Desequilíbrio O₂+CH₄ (biosignature química).",
             "ozone_uv_shield" => "Camada de O₃ como escudo UV secundário.",

@@ -56,6 +56,7 @@ public partial class SimBridge : Node3D
     private EnvironmentService _environment = null!;
     private SystemProjector _projector = null!;
     private ViewportTransformer _transformer = null!;
+    private BodyFilter _filter = null!;
 
     // O avanço do motor é síncrono: publicar o snapshot acontece dentro de _Process, e a
     // câmera precisa do mesmo delta para andar com a transição.
@@ -78,8 +79,17 @@ public partial class SimBridge : Node3D
     // Não se chama Scale porque Node3D já tem uma propriedade com esse nome.
     public ScaleMapper ScaleMap => _projector.Mapper;
 
+    /// <summary>
+    /// A vista deixou de mostrar alguma classe, ou voltou a mostrar. Quem desenha esconde
+    /// o que sumiu; a simulação continua igual, porque filtro é assunto de quem olha.
+    /// </summary>
+    public event Action? FilterChanged;
+
     /// <summary>Corpos em ordem de avaliação: o pai sempre antes do filho.</summary>
     public IReadOnlyList<CelestialBodyData> Bodies => _sim.Bodies;
+
+    /// <summary>As classes de corpo menor que o catálogo carregado contém.</summary>
+    public IReadOnlyList<BodyKind> FilterableKinds => _filter.Available;
 
     public string? AnchorBodyId => _rig.AnchorBodyId;
 
@@ -118,6 +128,9 @@ public partial class SimBridge : Node3D
         _projector = new SystemProjector(new ScaleLayout(_sim.Bodies, viewportHeight), mapper);
         _transformer = new ViewportTransformer();
 
+        _filter = new BodyFilter(_sim.Bodies);
+        _filter.Changed += OnFilterChanged;
+
         foreach (var body in _sim.Bodies)
         {
             _parents[body.Id] = body.ParentId;
@@ -151,7 +164,10 @@ public partial class SimBridge : Node3D
     /// <summary>Ancora a câmera em um corpo, ou na origem do sistema se nulo.</summary>
     public void AnchorTo(string? bodyId) => _rig.AnchorTo(bodyId);
 
-    /// <summary>Ancora no próximo corpo da ordem de avaliação, ou no anterior.</summary>
+    /// <summary>
+    /// Ancora no próximo corpo da ordem de avaliação, ou no anterior. Pula o que o filtro
+    /// esconde: percorrer a tecla Tab por corpos invisíveis seria a câmera parar no vazio.
+    /// </summary>
     public void CycleAnchor(int direction)
     {
         var bodies = _sim.Bodies;
@@ -166,9 +182,17 @@ public partial class SimBridge : Node3D
             }
         }
 
-        var next = (((current + direction) % bodies.Count) + bodies.Count) % bodies.Count;
+        for (var step = 1; step <= bodies.Count; step++)
+        {
+            var offset = current + (direction * step);
+            var next = (((offset % bodies.Count) + bodies.Count) % bodies.Count);
 
-        _rig.AnchorTo(bodies[next].Id);
+            if (_filter.IsVisible(bodies[next]))
+            {
+                _rig.AnchorTo(bodies[next].Id);
+                return;
+            }
+        }
     }
 
     public void TogglePause() => _sim.Time.IsPaused = !_sim.Time.IsPaused;
@@ -205,6 +229,15 @@ public partial class SimBridge : Node3D
     /// </summary>
     public BodyReport ReportFor(string bodyId)
         => BodyReport.For(_sim, bodyId, _sim.Time.JulianDate);
+
+    public bool IsKindVisible(BodyKind kind) => _filter.IsVisible(kind);
+
+    /// <summary>Verdadeiro se o corpo aparece na vista com o filtro atual.</summary>
+    public bool IsBodyVisible(string bodyId)
+        => _sim.Contains(bodyId) && _filter.IsVisible(_sim.BodyOf(bodyId));
+
+    /// <summary>Mostra ou esconde uma classe de corpo menor.</summary>
+    public void SetKindVisible(BodyKind kind, bool visible) => _filter.SetVisible(kind, visible);
 
     /// <summary>Retrato ambiental do corpo na Data Juliana atual.</summary>
     public EnvironmentReport EnvironmentFor(string bodyId)
@@ -256,6 +289,7 @@ public partial class SimBridge : Node3D
                 Id = id,
                 Name = $"Sonda {_sim.DynamicBodyIds.Count + 1}",
                 ParentId = hostId,
+                Kind = BodyKind.Spacecraft,
                 MuKm3S2 = 0.0,
                 RadiusKm = 0.0,
                 ColorRgb = 0xFFE066,
@@ -371,6 +405,13 @@ public partial class SimBridge : Node3D
 
         foreach (var (id, position) in _renderPositions)
         {
+            // Um corpo escondido pelo filtro não é clicável: ancorar em algo que não está
+            // na tela seria a câmera saltar para lugar nenhum.
+            if (!IsBodyVisible(id))
+            {
+                continue;
+            }
+
             var distance = project(position).DistanceTo(screenPoint);
 
             if (distance <= closestDistance)
@@ -457,8 +498,16 @@ public partial class SimBridge : Node3D
     /// </summary>
     private static IBodyRepository LoadRepository()
     {
-        var path = $"res://{JsonBodyRepository.DefaultRelativePath}";
+        var systemPath = $"res://{JsonBodyRepository.DefaultRelativePath}";
+        var catalogPath = $"res://{JsonBodyRepository.DefaultCatalogRelativePath}";
 
+        return JsonBodyRepository
+            .FromJson(ReadDataFile(systemPath), systemPath)
+            .WithCatalog(ReadDataFile(catalogPath), catalogPath);
+    }
+
+    private static string ReadDataFile(string path)
+    {
         // Qualificado porque System.IO.FileAccess também está no escopo.
         using var file = Godot.FileAccess.Open(path, Godot.FileAccess.ModeFlags.Read);
 
@@ -468,23 +517,16 @@ public partial class SimBridge : Node3D
                 $"Não foi possível abrir '{path}': {Godot.FileAccess.GetOpenError()}.");
         }
 
-        return JsonBodyRepository.FromJson(file.GetAsText(), path);
+        return file.GetAsText();
     }
 
     private static IReadOnlyDictionary<string, BodyEnvironment> LoadEnvironments()
     {
         var path = $"res://{EnvironmentLoader.DefaultRelativePath}";
-        using var file = Godot.FileAccess.Open(path, Godot.FileAccess.ModeFlags.Read);
-
-        if (file is null)
-        {
-            throw new SystemDataException(
-                $"Não foi possível abrir '{path}': {Godot.FileAccess.GetOpenError()}.");
-        }
 
         try
         {
-            return EnvironmentLoader.Parse(file.GetAsText());
+            return EnvironmentLoader.Parse(ReadDataFile(path));
         }
         catch (SystemDataException error)
         {
@@ -551,6 +593,7 @@ public partial class SimBridge : Node3D
             BodyId = body.Id,
             ParentBodyId = body.ParentId!,
             LineColor = BodyPalette.Of(body.ColorRgb) with { A = 0.35f },
+            Visible = _filter.IsVisible(body),
         };
 
         AddChild(orbit);
@@ -567,6 +610,7 @@ public partial class SimBridge : Node3D
             BodyId = body.Id,
             BodyColor = BodyPalette.Of(body.ColorRgb),
             DisplayRadius = (float)ScaleMap.BodyRadiusPixels(body.RadiusKm),
+            Visible = _filter.IsVisible(body),
         };
 
         AddChild(node);
@@ -630,6 +674,31 @@ public partial class SimBridge : Node3D
         }
 
         StructureChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// O filtro não mexe no motor: o corpo escondido continua sendo propagado, e o
+    /// inspetor continua sabendo dele se a câmera estiver ancorada nele. O que muda é só
+    /// quem é desenhado.
+    /// </summary>
+    private void OnFilterChanged()
+    {
+        foreach (var body in _sim.Bodies)
+        {
+            var visible = _filter.IsVisible(body);
+
+            if (_bodyNodes.TryGetValue(body.Id, out var node))
+            {
+                node.Visible = visible;
+            }
+
+            if (_orbitNodes.TryGetValue(body.Id, out var orbit))
+            {
+                orbit.Visible = visible;
+            }
+        }
+
+        FilterChanged?.Invoke();
     }
 
     private void OnSystemUpdated(SystemStateSnapshot snapshot)

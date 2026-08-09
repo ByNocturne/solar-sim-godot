@@ -124,6 +124,9 @@ public static class SaveState
             Id = dto.Id,
             Name = dto.Name ?? dto.Id,
             ParentId = last.ParentId,
+            // Só corpo dinâmico é salvo, e corpo dinâmico é sonda: a classe não precisa
+            // estar no arquivo para ser conhecida na volta.
+            Kind = BodyKind.Spacecraft,
             MuKm3S2 = dto.MuKm3S2,
             RadiusKm = dto.RadiusKm,
             ColorRgb = dto.ColorRgb,

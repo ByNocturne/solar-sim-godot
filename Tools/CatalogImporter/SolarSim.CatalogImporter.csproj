@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Ferramenta de linha de comando, rodada a mao quando o catalogo muda. Nao entra no
+       jogo exportado e nao acessa a rede: le um CSV curado do repositorio e escreve o
+       JSON que o motor carrega. -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <!-- Alveja o mesmo net8.0 do motor, mas roda em quem so tem um runtime mais novo
+         instalado: e uma ferramenta de quem desenvolve, e obrigar a instalar o runtime 8
+         so para regerar um JSON seria atrito sem contrapartida. -->
+    <RollForward>LatestMajor</RollForward>
+    <RootNamespace>SolarSim.CatalogImporter</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../Engine/SolarSim.Engine.csproj" />
+  </ItemGroup>
+
+</Project>

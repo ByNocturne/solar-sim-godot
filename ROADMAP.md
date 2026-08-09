@@ -953,32 +953,213 @@ novos.
 
 
 
-## M16 — Catálogo curado de corpos menores + importador offline
+## M16 — Catálogo curado de corpos menores + importador offline — **Concluído**
 
-- [ ] `Data/minor_bodies_j2000.json` (dezenas: Ceres, Vesta, NEOs, Halley, KBOs, Troianos)
-- [ ] Campos `kind` / família, densidade opcional, visibilidade
-- [ ] Inspetor: família/Troiano e esfera de influência do corpo menor
-- [ ] Filtros na árvore (cinturão, cometas, Troianos) via fachada
-- [ ] Importador offline → JSON local; jogo exportado só lê arquivo
-- [ ] Documentar em `AGENTS.md`: runtime offline
+- [x] `Data/minor_bodies_j2000.json` — 28 corpos: 4 do cinturão principal, 5 NEOs, 5
+  troianos, 2 centauros, 5 cometas e 7 transnetunianos
+- [x] `Engine/Models/BodyKind.cs` — classe dinâmica, `family` livre, `densityGCm3` opcional
+- [x] `Engine/Core/BodyMass.cs` — GM da esfera equivalente, para quem não teve massa medida
+- [x] `DataLoader.ParseCatalog` e `JsonBodyRepository.WithCatalog` — dois arquivos, uma
+  hierarquia, validada junta
+- [x] Inspetor: linha "Classificação" com classe e família; a SOI já vinha do M7
+- [x] `Bridge/BodyFilter.cs` e caixas na árvore, uma por classe presente nos dados
+- [x] `Tools/CatalogImporter` — CSV curado → JSON, validado pelo próprio carregador
+- [x] Fora do plano: corpo menor não dimensiona nível de escala, e o `kind` retroagiu ao
+  arquivo do sistema
 
-**Pronto quando:** catálogo carrega; importador valida como o loader atual; UI ancora um
-corpo menor com família e SOI visíveis.
+### Decisões e desvios
+
+**A classe é dinâmica, não física.** `BodyKind` diz onde o corpo vive e como se move —
+cinturão, troiano, cometa, transnetuniano —, e não que rótulo a IAU lhe deu. "Planeta
+anão" cortaria a lista em diagonal: Ceres é do cinturão principal e Plutão é
+transnetuniano, e é onde eles estão que decide se aparecem juntos quando se liga um
+filtro. O rótulo físico, quando importa, é texto livre em `family` — "Apolo", "Plutino",
+"Troiano de Júpiter (L4)" —, que a interface exibe e sobre o qual o motor não opina.
+
+**Corpo menor não dimensiona a escala, e essa é a decisão que salvou a tela.** A curva
+perceptual é normalizada pela maior órbita do nível. Com Sedna no cálculo, cujo afélio
+passa de mil unidades astronômicas, o Sistema Solar inteiro encolheria para acomodar um
+ponto que passa a maior parte de onze mil anos longe demais para ser visto. Fora do
+cálculo ele continua sendo desenhado — a curva não satura, apenas o coloca além do raio
+nominal do nível. A propriedade que fica é forte: acrescentar corpos ao catálogo não move
+um pixel do Sistema Solar, e há teste comparando os níveis com e sem catálogo.
+
+**Massa por densidade, quando não há massa.** Só um punhado de corpos menores teve o GM
+determinado por sonda ou por satélite; para o resto o que existe publicado é o diâmetro e
+uma densidade típica da classe. O arquivo aceita `muKm3S2` **ou** `densityGCm3`, nunca os
+dois, e a carga recusa quem traz ambos ou nenhum. É estimativa, e vale a pena porque sem
+massa o corpo não tem esfera de influência nenhuma — nem no inspetor, nem na emenda de
+cônicas. A fórmula é conferida contra o GM que a Dawn mediu em Ceres.
+
+**A conversão de época é a razão de o importador existir.** As fontes publicam elementos
+osculadores na época que lhes convém, e o motor referencia tudo a J2000.0. Só a anomalia
+média é deslocável, pelo movimento médio: os outros cinco elementos são osculadores e, em
+dois corpos, constantes — deslocá-los exigiria a perturbação que os move, que é justamente
+o que o modelo não tem. Por isso o CSV pede ao Horizons os elementos já em J2000, e o
+deslocamento fica como rede de segurança para uma fonte que não saiba entregá-los assim.
+Órbita aberta é recusada com mensagem explícita, porque ali não há movimento médio que
+sirva de relógio.
+
+**O importador valida escrevendo o que o motor lê.** Antes de gravar, ele chama
+`DataLoader.ParseCatalog` e monta o repositório junto com o arquivo do sistema. Um id
+repetido, um pai inexistente ou uma classe que não é de corpo menor derrubam a ferramenta
+sem tocar no arquivo que já estava lá. E há teste conferindo que o JSON versionado é
+exatamente o que o CSV versionado produz: sem ele, nada impediria alguém de editar o
+gerado à mão e deixar a fonte descrevendo outro catálogo — a pior divergência, porque o
+programa continua funcionando.
+
+**A visibilidade é da vista, não do arquivo.** O plano previa um campo de visibilidade no
+JSON, e ele não existe. Visibilidade é decisão de quem olha, e guardá-la na fonte da
+verdade da física seria pôr estado de interface onde ele envelheceria sem ninguém notar.
+O `BodyFilter` mora na Bridge, e a árvore só oferece botão para as classes que os dados
+realmente contêm: um catálogo sem cometas não ganha o botão de cometas.
+
+**O `kind` retroagiu ao arquivo do sistema.** Os quinze corpos de
+`solar_system_j2000.json` passaram a declarar `star`, `planet` ou `moon`. Sem isso a
+classe seria um campo que só metade dos corpos tem, e toda leitura precisaria decidir o
+que fazer com a ausência. Sonda criada em runtime entra como `spacecraft`, e a classe
+sobrevive ao save/load.
+
+**Nenhum corpo do catálogo declara `orbit.rates`.** Vale a mesma regra do M15: o que o
+motor calcula sozinho não se declara, e o que ele não calcula não está medido para estes
+corpos. O que falta neles — Júpiter empurrando o cinturão, a sublimação empurrando o
+cometa — não é taxa secular publicada, e fingir que é seria pior que a omissão.
+
+**Nenhum valor do inspetor decide a largura do inspetor.** O quadro gravado com Ceres
+ancorada mostrou a ficha inteira cortada na borda direita da tela — não só a linha
+comprida, todas elas. Um rótulo do Godot pede como largura mínima o texto inteiro, e a
+caixa cede: bastou "Asteroide · Cinturão principal" para empurrar a coluna de valores para
+fora do painel, e "470 km" virou "470 k". Era defeito latente desde sempre, e o corpo
+menor foi só o primeiro texto longo a encontrá-lo. Agora os valores recortam com
+reticências, e a classificação — a única prosa da ficha, e onde cortar esconderia
+justamente a família — quebra em duas linhas.
+
+**A classe não se repete quando a família já a diz.** "Troiano · Troiano de Júpiter (L4)"
+gasta uma linha para gaguejar; "Asteroide · Cinturão principal" diz duas coisas. A junção
+só acontece quando a família não começa pelo nome da classe.
+
+**O GM ganhou casa decimal para corpo pequeno.** Arredondar sempre para inteiro servia
+enquanto o menor corpo do arquivo era a Lua, com 4.903. Héctor tem 0,398, e "0 km³/s²" não
+é um número arredondado: é a afirmação de que o corpo não tem massa, escrita logo acima de
+uma esfera de influência que existe.
+
+### Validação
+
+- **Regressão contra o JPL Horizons** em duas datas distantes da época, com 12 pontos:
+  Ceres 0,03%, Plutão 0,21%, Vesta 0,28%, Halley 0,35%, Eros 0,38% e Héctor 1,05% de erro
+  radial. A ordem é a esperada e diz quem sente Júpiter — o troiano, preso a ele, é o pior
+  caso por margem larga, e o cinturão principal fica uma ordem de grandeza melhor. A
+  tolerância é 1,5%, contra os 0,02% dos planetas, e a diferença é dos corpos, não do
+  propagador.
+- **Períodos publicados** de Ceres, Vesta, Halley, Encke e Plutão, a 1%.
+- **Os troianos compartilham o semi-eixo de Júpiter**, dentro de 2% — é o teste que
+  denunciaria uma coluna deslocada no CSV, porque um asteroide qualquer não cai em 5,2 UA
+  por acidente. Halley é retrógrado, e o periélio de Sedna está nas 76 UA que a põem fora
+  do alcance de Netuno.
+- **A esfera de influência de Ceres bate com os 78 mil km publicados**, o que prova que a
+  massa derivada e o semi-eixo estão os dois certos ao mesmo tempo.
+- **Os níveis de escala do Sol, da Terra e de Júpiter são idênticos** com e sem catálogo.
+- **Verificação em execução**, pelo modo Movie Maker: os 28 corpos aparecem com a cor da
+  classe e o rótulo, a árvore ganha as seis caixas de filtro sem cortar "Asteroide próximo
+  da Terra", e o Sistema Solar ocupa a tela como antes. Foi ela que pegou o corte do
+  inspetor, que nenhum teste veria. Com Ceres ancorada a ficha mostra "Asteroide · Cinturão
+  principal" e "Esfera de influência 76.984 km"; com Héctor, "Troiano de Júpiter (L4)" e
+  "GM 0,398 km³/s²".
+
+**Pronto quando:** ~~catálogo carrega; importador valida como o loader atual; UI ancora um
+corpo menor com família e SOI visíveis.~~ **Concluído:** build sem avisos e 483 testes
+passando, sendo 51 novos.
 
 ---
 
 
 
-## M17 — Limite de Roche, anéis e destino de satélites
+## M17 — Limite de Roche, anéis e destino de satélites — **Concluído**
 
 Avaliadores `f(JD)`, não simulação de fluidos.
 
-- [ ] `RocheLimitCalculator` (fluido / rígido)
-- [ ] Relatório: margem, estável / em risco / anel potencial
-- [ ] Heurística de anéis (Saturno positivo nos testes)
-- [ ] Expor na Bridge / inspetor / flags de ensino se couber
+- [x] `Engine/Core/RocheLimit.cs` — limite fluido e rígido, e o destino a partir do periápside
+- [x] `Engine/Models/SatelliteFate.cs` — estável, em risco, desfeito
+- [x] `Engine/Core/RingEvaluator.cs` — heurística de anéis, com Saturno positivo
+- [x] `SimEngine.TidesOn` e `SimEngine.RingZoneOf`; `BodyReport` e duas linhas no inspetor
+- [x] Flags de ensino `inside_fluid_roche`, `inside_rigid_roche` e `ring_zone`
+- [x] Fora do plano: Fobos e Deimos entraram no arquivo de dados, e `BodyMass` ganhou a
+  densidade a partir do GM
 
-**Pronto quando:** testes distinguem lua estável vs interior a Roche; Saturno com anéis.
+### Decisões e desvios
+
+**Fobos entrou no arquivo, e é ele que dá sentido ao marco.** Sem um corpo dentro da zona
+de Roche, o cálculo diria "estável" quinze vezes e não haveria como saber se estava
+funcionando. Fobos orbita entre os dois limites de Marte, e é por isso que a superfície
+dele é sulcada e que ele vai virar um anel em algumas dezenas de milhões de anos. Deimos
+veio junto de propósito, como controle: mesma origem, densidade da mesma ordem, duas
+vezes e meia a distância — e estável. É o par que mostra que o destino sai da órbita, e
+não do material.
+
+**O limite de Roche não precisa da constante gravitacional.** Escrito em densidades, ele
+é `R_pai·(2ρ_pai/ρ_sat)^⅓` e parece pedir o raio do pai; trocando as densidades por GM e
+raio, o raio do pai se cancela junto com o G, e sobram o raio do satélite e a razão entre
+as massas. É a mesma equação escrita com o que se conhece melhor — a massa de um planeta
+se mede com oito casas, o raio dele depende de onde se decide que a atmosfera termina. Há
+teste conferindo que as duas formas dão o mesmo número.
+
+**No caso do anel, quem se cancela é o raio do pai.** Um anel não tem satélite de que
+tomar raio e massa, só material de densidade suposta; substituindo, o limite para
+escombros de gelo passa a depender **só da massa do hospedeiro**. Dois planetas de mesma
+massa e tamanhos diferentes têm o anel possível na mesma distância.
+
+**São dois limites, e por isso três destinos.** Entre o rígido e o fluido está a faixa em
+que a resposta depende de do que o corpo é feito: um corpo coeso aguenta, uma pilha de
+escombros se alonga e se desfaz. Achatar isso em "sobrevive" ou "não sobrevive" seria
+afirmar o que o modelo não sabe — e Fobos está exatamente nessa faixa.
+
+**A comparação é com o periápside, não com o semi-eixo.** O corpo se parte no ponto de
+maior aproximação, e uma órbita excêntrica que mergulha na zona de Roche uma vez por volta
+já basta: foi assim que o Shoemaker-Levy 9 virou um colar de vinte fragmentos dois anos
+antes de cair em Júpiter.
+
+**A heurística de anéis não é geométrica, e é isso que a faz acertar.** A tentação é dizer
+que tem anel quem tem zona de Roche larga — e por esse critério a Terra ganharia de
+Saturno, porque a Terra é densa e a zona dela é proporcionalmente maior. O que falta à
+Terra não é espaço, é gelo. As condições são três: haver faixa acima da superfície, o
+corpo estar além da linha de gelo, e ele orbitar a estrela. A última é limite de escopo
+declarado, não resultado: a vizinhança de uma lua é governada pela maré do planeta, e este
+modelo de dois corpos não tem o que dizer sobre ela.
+
+**A linha de gelo é 2,7 UA, e não foi escolhida para o teste passar.** A prova é onde ela
+cai: entre Vesta e Ceres, os dois maiores do cinturão — um basáltico e seco, o outro com
+gelo de água. É onde a mineralogia diz que ela deve cair.
+
+**A distância que entra na linha de gelo é o semi-eixo maior.** Ter anel é propriedade do
+corpo, não do mês. Com a distância instantânea, Ceres cruzaria a linha duas vezes por
+volta e o veredito piscaria enquanto o tempo corre.
+
+**A linha da maré some quando não diz nada.** Acima de 25 vezes o limite, o inspetor
+esconde a linha: "estável a 622 vezes" é o que ele diria de Saturno contra o Sol, e é uma
+linha gasta para informar que nada acontece. Abaixo disso a maré ainda é quantidade da
+qual se fala — a Lua entra com 20, Io com 3,4 e Fobos com 0,87.
+
+### Validação
+
+- **O limite de Roche de Saturno cai na borda do anel A.** O modelo põe o teto da zona em
+  2,24 raios, ou 130.600 km; a borda externa do anel A está a 136.775 km, 4,5% além. Não é
+  coincidência: é a razão de os anéis terminarem onde terminam, porque além dali o material
+  se junta em lua. É o número que valida o marco inteiro.
+- **Fobos em risco a 0,87 do limite fluido**, com os dois limites de Marte em 10.600 e
+  5.500 km, que são os valores publicados. Deimos estável, e as sete luas grandes também.
+- **Os quatro gigantes têm anel e os quatro terrestres não**, sem exceção — e a Terra é
+  recusada pela falta de gelo, com zona de sobra, o que o teste verifica separando as
+  condições.
+- **Cariclo, Haumea e Quaoar são aceitos** pelo mesmo critério que aceita Saturno, que é o
+  resultado certo: são justamente os corpos pequenos em que anéis foram descobertos.
+- **A densidade derivada do GM é a inversa exata do GM derivado da densidade**, sem o que o
+  catálogo do M16 e a zona de anel discordariam sobre o mesmo corpo.
+- **Verificação em execução**, pelo modo Movie Maker: com Fobos ancorado a ficha mostra
+  "Maré do pai em risco (0,87× Roche)" e nenhuma linha de anel; com Saturno, "Zona de anel
+  até 2,24 raios" e a linha da maré ausente.
+
+**Pronto quando:** ~~testes distinguem lua estável vs interior a Roche; Saturno com
+anéis.~~ **Concluído:** build sem avisos e 526 testes passando, sendo 43 novos.
 
 ---
 
@@ -1019,7 +1200,8 @@ solar-sim-godot/
 │   └── rules/                       # convenções por camada, com exemplos
 ├── Data/
 │   ├── solar_system_j2000.json
-│   └── body_environment_j2000.json  # perfis ambientais (M8+)
+│   ├── body_environment_j2000.json  # perfis ambientais (M8+)
+│   └── minor_bodies_j2000.json      # M16: gerado pelo importador, não editar à mão
 ├── Engine/                          # DOMÍNIO PURO (projeto próprio, zero Godot)
 │   ├── SolarSim.Engine.csproj
 │   ├── .gdignore
@@ -1039,7 +1221,10 @@ solar-sim-godot/
 │   │   ├── BiosignatureEvaluator.cs     # M13
 │   │   ├── GeologicalTimeModel.cs       # M13
 │   │   ├── SecularPerturbations.cs      # M15: J2 e relatividade como taxa
-│   │   └── SecularPropagator.cs         # M15: elementos avaliados em JD
+│   │   ├── SecularPropagator.cs         # M15: elementos avaliados em JD
+│   │   ├── BodyMass.cs                  # M16: GM e densidade, um do outro
+│   │   ├── RocheLimit.cs                # M17: limite fluido e rígido, e o destino
+│   │   └── RingEvaluator.cs             # M17: onde um anel caberia, e se caberia
 │   ├── Models/
 │   │   ├── CelestialBodyData.cs
 │   │   ├── OrbitalElements.cs
@@ -1049,7 +1234,11 @@ solar-sim-godot/
 │   │   ├── SystemStateSnapshot.cs
 │   │   ├── BodyEnvironment.cs           # M8
 │   │   ├── EnvironmentReport.cs         # M8–M13
-│   │   └── OrbitalElementRates.cs       # M15
+│   │   ├── OrbitalElementRates.cs       # M15
+│   │   ├── BodyKind.cs                  # M16: classe dinâmica e o que é filtrável
+│   │   ├── SatelliteFate.cs             # M17
+│   │   ├── SatelliteTides.cs            # M17
+│   │   └── RingZone.cs                  # M17
 │   ├── Data/
 │   │   ├── IBodyRepository.cs
 │   │   ├── DataLoader.cs
@@ -1070,6 +1259,7 @@ solar-sim-godot/
 │   ├── BodyReport.cs
 │   ├── DisplayFormat.cs
 │   ├── TeachingExplain.cs           # M14: texto a partir dos flags do relatório
+│   ├── BodyFilter.cs                # M16: que classes a vista mostra
 │   └── BodyPalette.cs
 ├── Render/
 │   ├── CelestialBodyNode.cs
@@ -1088,6 +1278,17 @@ solar-sim-godot/
 │   ├── SolarSim.Tests.csproj
 │   ├── ArchitectureTests.cs         # guardião do invariante 1
 │   └── .gdignore
+├── Tools/                           # M16: ferramentas de quem desenvolve, fora do jogo
+│   ├── .gdignore
+│   └── CatalogImporter/
+│       ├── SolarSim.CatalogImporter.csproj
+│       ├── Program.cs
+│       ├── CatalogSource.cs         # CSV -> corpos, com a época trazida para J2000
+│       ├── CatalogWriter.cs         # corpos -> JSON, na forma que o carregador lê
+│       ├── Csv.cs
+│       ├── Palette.cs
+│       └── source/
+│           └── minor_bodies_j2000.csv   # a fonte curada, esta sim editável
 ├── .github/
 │   └── workflows/
 │       └── build.yml                # compila e testa a cada push
@@ -1150,8 +1351,8 @@ Godot, `SimBridge`, `UI/` ou `Render/`:
 - Critério: host mínimo fora do Godot roda Sistema Solar + BHI só com assemblies sem Godot
 
 Rotação/obliquidade, HUD de ensino e insolação matemática saíram deste backlog para
-M12 e M14. Taxas seculares, asteroides/cometas e janelas de transferência saem do
-backlog curto quando M15, M16 e M19 forem concluídos.
+M12 e M14; taxas seculares saíram para o M15, e asteroides e cometas para o M16. Janelas
+de transferência saem quando o M19 for concluído.
 
 ---
 

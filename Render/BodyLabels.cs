@@ -86,7 +86,7 @@ public partial class BodyLabels : CanvasLayer
 
     private void OnFrameReady(RenderFrame frame)
     {
-        if (GetViewport().GetCamera3D() is not { } camera)
+        if (_bridge is not { } bridge || GetViewport().GetCamera3D() is not { } camera)
         {
             return;
         }
@@ -108,7 +108,9 @@ public partial class BodyLabels : CanvasLayer
         {
             entry.Label.Visible = false;
 
-            if (!_visible || !frame.RenderPositions.TryGetValue(entry.BodyId, out var world))
+            if (!_visible
+                || !frame.RenderPositions.TryGetValue(entry.BodyId, out var world)
+                || !bridge.IsBodyVisible(entry.BodyId))
             {
                 continue;
             }
