@@ -1261,6 +1261,101 @@ testes passando, sendo 8 novos.
 
 
 
+## Fase 4 — Do simulador ao jogo (M20–M22)
+
+O simulador (M0–M19) é a **base de dados e física**. A Fase 4 empacota o motor para
+outros hosts e abre o primeiro loop de jogo: **exploração com cuidado** (ler o corpo,
+preparar, correr risco, voltar). Mineração/amostragem é consequência de uma ida bem
+montada — não o eixo único.
+
+**Decisões:**
+
+- **Monorepo:** Engine, host do simulador (Godot) e host do jogo/CLI no mesmo
+  repositório. Separar repos ou publicar NuGet só quando houver segundo consumidor
+  fora daqui ou necessidade de versionar a lib com ciclo próprio.
+- **Sem N-corpos / VSOP** nesta fase — isso fica no backlog “O simulador”.
+- **Universo:** Sistema Solar real (dados já versionados); procedural fica para depois.
+- **Sem lore** — HUD factual; o diferencial é preparação vs ambiente.
+
+```mermaid
+graph LR
+    M19[M19 Lambert] --> M20[M20 SimSession]
+    M14[M14 Ensino] --> M21[M21 Ida com cuidado]
+    M20 --> M21
+    M21 --> M22[M22 Loop de cuidado]
+```
+
+---
+
+
+
+## M20 — Engine consumível (SimSession) — **Concluído**
+
+Absorve do backlog “Empacotamento — Engine host-agnostic” o critério mínimo sem NuGet.
+
+- [x] `Engine/Application/SimSession.cs` — carrega corpos + ambientes (+ catálogo) de
+  caminhos de arquivo; consulta `EnvironmentFor` sem `SimBridge` / Godot
+- [x] Critério: host fora do Godot (testes + `Tools/ExplorationHost`) roda Sistema Solar
+  + relatório ambiental / BHI só com `SolarSim.Engine`
+- [x] NuGet e assembly intermediário Bridge-pura ficam para quando houver segundo
+  consumidor externo; monorepo + `ProjectReference` basta agora
+
+### Validação
+
+- Teste carrega `Data/` via `SimSession.FromDataRoot` e lê ambiente da Terra/Lua/Marte.
+- `ArchitectureTests` continua a garantir zero `using Godot` em `Engine/`.
+
+**Pronto quando:** ~~host mínimo fora do Godot consulta Sistema Solar + ambiente.~~
+**Concluído** com os testes da Fase 4.
+
+---
+
+
+
+## M21 — Fatia vertical: uma ida com cuidado — **Concluído**
+
+- [x] `Engine/Exploration/` — risco a partir de `EnvironmentReport`, carga
+  (`MissionLoadout`), missão superfície com EVA limitado
+- [x] Dois corpos com perfis distintos (ex. Lua vs Marte): carga inadequada falha;
+  carga adequada permite amostrar
+- [x] `Data/body_composition_j2000.json` — o que dá para extrair por corpo (ênfase 2A)
+- [x] Host jogável sem Godot: `Tools/ExplorationHost` (CLI)
+- [x] Critério: o jogador **planeja** (escudos, EVA, propelente), não só “cata recurso”
+
+### Validação
+
+- Lua sem escudo de radiação adequado falha; com carga certa completa e devolve amostra.
+- Marte vs Lua exigem combinações diferentes de proteção térmica/radiação.
+
+**Pronto quando:** ~~ida planejada vs ida mal preparada distinguíveis nos testes.~~
+**Concluído** com os testes da Fase 4.
+
+---
+
+
+
+## M22 — Loop de cuidado (anti–coleta vazia) — **Concluído**
+
+- [x] Inventário de campanha: amostras servem à **próxima** ida (ex. gelo → propelente)
+- [x] Preparação tem custo em massa/propelente; voltar exige margem
+- [x] Composição por corpo diferencia rendimento e dificuldade de extração
+- [x] Sem narrativa; textos factuais no host CLI
+
+### Validação
+
+- Campanha: primeira ida bem sucedida → refinar recurso → segunda ida paga com o
+  refinado.
+- Extrair sem uso posterior não é o caminho feliz dos testes — o refino é exercitado.
+
+**Pronto quando:** ~~recursos extraídos alimentam a preparação seguinte.~~
+**Concluído** com os testes da Fase 4.
+
+---
+
+---
+
+
+
 ## Estrutura de arquivos alvo
 
 ```
@@ -1322,6 +1417,9 @@ solar-sim-godot/
 │   │   └── EnvironmentLoader.cs         # M8
 │   ├── EnvironmentService.cs            # M8–M13: consulta ambiental f(JD)
 │   ├── TransferPlanner.cs               # M19: preview e grade sem mutar o motor
+│   ├── Application/
+│   │   └── SimSession.cs                # M20: fachada host-agnostic
+│   ├── Exploration/                     # M21–M22: cuidado, carga, campanha
 │   └── SimEngine.cs
 ├── Bridge/                          # CAMADA DE ADAPTAÇÃO
 │   ├── SimBridge.cs                 # fachada: único caminho da UI até o motor
@@ -1352,17 +1450,25 @@ solar-sim-godot/
 │   ├── SolarSim.Tests.csproj
 │   ├── ArchitectureTests.cs         # guardião do invariante 1
 │   └── .gdignore
-├── Tools/                           # M16: ferramentas de quem desenvolve, fora do jogo
+├── Tools/                           # ferramentas de quem desenvolve, fora do jogo
 │   ├── .gdignore
-│   └── CatalogImporter/
-│       ├── SolarSim.CatalogImporter.csproj
-│       ├── Program.cs
-│       ├── CatalogSource.cs         # CSV -> corpos, com a época trazida para J2000
-│       ├── CatalogWriter.cs         # corpos -> JSON, na forma que o carregador lê
-│       ├── Csv.cs
-│       ├── Palette.cs
-│       └── source/
-│           └── minor_bodies_j2000.csv   # a fonte curada, esta sim editável
+│   ├── CatalogImporter/
+│   │   ├── SolarSim.CatalogImporter.csproj
+│   │   ├── Program.cs
+│   │   ├── CatalogSource.cs         # CSV -> corpos, com a época trazida para J2000
+│   │   ├── CatalogWriter.cs         # corpos -> JSON, na forma que o carregador lê
+│   │   ├── Csv.cs
+│   │   ├── Palette.cs
+│   │   └── source/
+│   │       └── minor_bodies_j2000.csv   # a fonte curada, esta sim editável
+│   └── ExplorationHost/             # M20–M22: host CLI do loop de exploração
+│       ├── SolarSim.ExplorationHost.csproj
+│       └── Program.cs
+├── Data/
+│   ├── solar_system_j2000.json
+│   ├── body_environment_j2000.json
+│   ├── minor_bodies_j2000.json
+│   └── body_composition_j2000.json  # M21: o que dá para amostrar por corpo
 ├── .github/
 │   └── workflows/
 │       └── build.yml                # compila e testa a cada push
@@ -1383,9 +1489,15 @@ solar-sim-godot/
 
 ## Backlog
 
-Fora do escopo imediato. A **Fase 3 (M15–M19)** absorve taxas seculares, catálogo curado
-de asteroides/cometas, Roche/anéis, Yarkovsky secular e Lambert/janelas + impulso.
-O que sobra aqui **não tem número de fase** — anotações para não esquecer.
+Fora do escopo imediato. A **Fase 3 (M15–M19)** e a **Fase 4 (M20–M22)** absorveram o
+que estava numerável. O que sobra aqui **não tem número de fase** — anotações para não
+esquecer.
+
+### Monorepo (decisão Fase 4)
+
+Manter **um** repositório (`Engine/` + host Godot do simulador + `Tools/ExplorationHost`)
+até existir segundo consumidor **fora** deste monorepo ou necessidade de versionar a
+Engine como NuGet. Não separar `solar-sim-engine` “por precaução”.
 
 ### “O simulador” — precisão e encontros (sem fase)
 
@@ -1413,20 +1525,20 @@ Melhorias grandes; a mais importante, se um dia for o salto de fidelidade, é a 
 - Constelações como pano de fundo (catálogo e projeção da esfera celeste)
 - Desenho visual de anéis (o relatório/heurística entra no M17)
 
-### Empacotamento — Engine host-agnostic
+### Empacotamento — além do M20
 
-Tornar o simulador consumível por qualquer host (CLI, API, outro engine) sem arrastar
-Godot, `SimBridge`, `UI/` ou `Render/`:
+O M20 entregou `SimSession` e o critério “host sem Godot”. Ainda no backlog, se um dia
+precisar:
 
-- Tratar `SolarSim.Engine` como biblioteca (NuGet quando fizer sentido)
+- Publicar `SolarSim.Engine` como NuGet
 - Extrair de `Bridge/` o que já é Godot-free (`BodyReport`, `DisplayFormat`, escala) para
   um assembly intermediário sem `Node`
-- Fachada de aplicação pura; o Godot só adapta input/frame
-- Critério: host mínimo fora do Godot roda Sistema Solar + BHI só com assemblies sem Godot
+- Fachada Godot só adapta input/frame (já parcialmente verdade via `SimBridge`)
 
 Rotação/obliquidade, HUD de ensino e insolação matemática saíram deste backlog para
 M12 e M14; taxas seculares saíram para o M15, e asteroides e cometas para o M16. Roche e
 anéis saíram para o M17; Yarkovsky saiu para o M18; Lambert e impulso saíram para o M19.
+Empacotamento mínimo e exploração cuidadosa saíram para M20–M22.
 
 ---
 
@@ -1462,6 +1574,10 @@ graph LR
     M15 --> M18
     M15 --> M19[M19 Lambert]
     M7 --> M19
+    M19 --> M20[M20 SimSession]
+    M14 --> M21[M21 Exploracao]
+    M20 --> M21
+    M21 --> M22[M22 Loop cuidado]
 ```
 
 

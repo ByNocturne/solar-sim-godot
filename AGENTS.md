@@ -5,7 +5,7 @@ como base para trabalho futuro com missões e transferências orbitais.
 
 ## Estado atual
 
-Os marcos M0 a M14 estão concluídos e verificados em testes (`dotnet test`). O motor
+Os marcos M0 a M22 estão concluídos e verificados em testes (`dotnet test`). O motor
 carrega o Sistema Solar de `Data/solar_system_j2000.json` — Sol, oito planetas, a Lua,
 Fobos e Deimos, as galileanas e Titã — e perfis ambientais de
 `Data/body_environment_j2000.json`. Compõe a
@@ -25,8 +25,12 @@ importador offline que gera o arquivo. O M17 acrescentou o limite de Roche, o de
 cada satélite sob a maré do pai e uma heurística de anéis. O M18 acrescentou drift
 secular do semi-eixo por Yarkovsky (Bennu a −0,0019 UA/Myr) e pressão de radiação via
 Poynting–Robertson. O M19 fechou a Fase 3: Lambert, janelas de Δv e impulso que emenda
-arco na sonda. Ideias maiores (“O simulador”, N-corpos híbrido) ficam no backlog sem
-fase — ver [ROADMAP.md](ROADMAP.md).
+arco na sonda. A Fase 4 (M20–M22) empacota o motor em `SimSession` (host sem Godot), abre
+o loop de **exploração cuidadosa** (risco ambiental → carga → EVA → volta) e faz amostras
+alimentarem a próxima ida (gelo → propelente). Host CLI: `dotnet run --project
+Tools/ExplorationHost`. Monorepo mantido; NuGet/split só com segundo consumidor externo.
+Ideias maiores (“O simulador”, N-corpos híbrido) ficam no backlog sem fase — ver
+[ROADMAP.md](ROADMAP.md).
 
 Para ver rodando: abra o projeto no Godot e pressione F5, ou use
 `scripts/Resolve-Godot.ps1` / `scripts/movie-smoke.ps1` no Windows. Espaço pausa, setas
@@ -106,6 +110,8 @@ Quatro projetos na solução:
 - `Tests/SolarSim.Tests.csproj` — xUnit, referencia apenas o motor
 - `Tools/CatalogImporter/SolarSim.CatalogImporter.csproj` — ferramenta de linha de comando,
   rodada a mão; não entra no jogo exportado
+- `Tools/ExplorationHost/SolarSim.ExplorationHost.csproj` — host CLI da Fase 4 (exploração
+  cuidadosa), só referencia o motor
 
 Essa separação é o que faz o invariante 1 ser garantido pelo compilador: `using Godot` em
 `Engine/` não compila, porque o assembly não está lá.
@@ -114,13 +120,13 @@ Essa separação é o que faz o invariante 1 ser garantido pelo compilador: `usi
 
 | Pasta | Responsabilidade |
 | --- | --- |
-| `Engine/` | Domínio puro: matemática orbital, tempo, estado, ambiente/habitabilidade. Zero Godot |
+| `Engine/` | Domínio puro: matemática orbital, tempo, estado, ambiente/habitabilidade, `SimSession` e exploração (Fase 4). Zero Godot |
 | `Bridge/` | Adaptação: precisão, escala, ponte de eventos com o Godot; `ControlCatalog` dos atalhos |
 | `Render/` | Nós visuais em 3D com projeção ortográfica |
 | `UI/` | Painéis e controles |
-| `Data/` | Dados estáticos do Sistema Solar (órbitas + perfis ambientais) na época J2000 |
+| `Data/` | Dados estáticos do Sistema Solar (órbitas + perfis ambientais + composição) na época J2000 |
 | `Tests/` | Testes do motor; referencia apenas `Engine/` |
-| `Tools/` | Ferramentas de quem desenvolve, fora do jogo. Tem `.gdignore` |
+| `Tools/` | Ferramentas de quem desenvolve, fora do jogo (`CatalogImporter`, `ExplorationHost`). Tem `.gdignore` |
 
 `Tests/` também compila os arquivos de `Bridge/` que não tocam no Godot — `ScaleMapper`,
 `ScaleLayout`, `SystemProjector`, `CameraRig`, `BodyReport`, `BodyFilter` e

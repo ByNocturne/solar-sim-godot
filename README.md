@@ -9,11 +9,12 @@ quadros — está em [AGENTS.md](AGENTS.md). O plano por marcos está em
 
 ## Estado
 
-**M0 a M19 estão concluídos** (Fase 3 fechada). O motor carrega o Sistema Solar e o
+**M0 a M22 estão concluídos** (Fase 3 + Fase 4). O motor carrega o Sistema Solar e o
 catálogo de corpos menores, propaga com taxas seculares (J₂ + GR), Yarkovsky onde
 declarado, e oferece Lambert + impulso em sondas. Erro radial dos planetas abaixo de
 0,02% contra DE441. Apresentação 3D ortográfica, com árvore, barra de tempo, inspetor e
-HUD de ensino (`I`).
+HUD de ensino (`I`). A Fase 4 empacota o motor (`SimSession`) e o loop de exploração
+cuidadosa; host CLI: `dotnet run --project Tools/ExplorationHost`.
 
 ## Setup
 

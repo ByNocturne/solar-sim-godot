@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using SolarSim.Engine;
 using SolarSim.Engine.Data;
+using SolarSim.Engine.Exploration;
 
 namespace SolarSim.Tests;
 
@@ -26,6 +27,12 @@ internal static class SolarSystem
 
     public static string CatalogPath
         => Path.Combine(RepoRoot(), JsonBodyRepository.DefaultCatalogRelativePath);
+
+    public static string CompositionPath
+        => Path.Combine(RepoRoot(), CompositionLoader.DefaultRelativePath);
+
+    /// <summary>Raiz do repositório — para <see cref="Application.SimSession.FromDataRoot"/>.</summary>
+    public static string RepoRootPath => RepoRoot();
 
     /// <summary>A fonte de onde o catálogo é gerado, para conferir que o gerado é o dela.</summary>
     public static string CatalogSourcePath
