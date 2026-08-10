@@ -5,7 +5,7 @@ como base para trabalho futuro com missões e transferências orbitais.
 
 ## Estado atual
 
-Os marcos M0 a M22 estão concluídos e verificados em testes (`dotnet test`). O motor
+Os marcos M0 a M25 estão concluídos e verificados em testes (`dotnet test`). O motor
 carrega o Sistema Solar de `Data/solar_system_j2000.json` — Sol, oito planetas, a Lua,
 Fobos e Deimos, as galileanas e Titã — e perfis ambientais de
 `Data/body_environment_j2000.json`. Compõe a
@@ -28,7 +28,9 @@ Poynting–Robertson. O M19 fechou a Fase 3: Lambert, janelas de Δv e impulso q
 arco na sonda. A Fase 4 (M20–M22) empacota o motor em `SimSession` (host sem Godot), abre
 o loop de **exploração cuidadosa** (risco ambiental → carga → EVA → volta) e faz amostras
 alimentarem a próxima ida (gelo → propelente). Host CLI: `dotnet run --project
-Tools/ExplorationHost`. Monorepo mantido; NuGet/split só com segundo consumidor externo.
+Tools/ExplorationHost`. A Fase 5 (M23–M25) acrescenta o **céu da Terra**: tecla K, vista
+de superfície em perspectiva com Sol/Lua/planetas por direção (esfera celeste de raio
+fixo — sem `ScaleMapper`). Monorepo mantido; NuGet/split só com segundo consumidor externo.
 Ideias maiores (“O simulador”, N-corpos híbrido) ficam no backlog sem fase — ver
 [ROADMAP.md](ROADMAP.md).
 
@@ -37,7 +39,7 @@ Para ver rodando: abra o projeto no Godot e pressione F5, ou use
 ajustam a velocidade, R volta para J2000, Tab e Shift+Tab ancoram a câmera no corpo
 seguinte e no anterior, um clique ancora no corpo apontado, L alterna entre escala
 logarítmica e linear, N mostra ou esconde os nomes, Home devolve a vista inicial, H
-mostra a lista de atalhos, I abre o ensino ambiental, a roda dá zoom, o botão direito
+mostra a lista de atalhos, I abre o ensino ambiental, K entra no céu da Terra, a roda dá zoom, o botão direito
 gira a câmera e o do meio — ou Shift com o direito — arrasta. P e Shift+P soltam uma
 sonda em órbita ou em fuga do corpo ancorado, T mostra o Δv Terra→Marte na data atual e
 Shift+T (ou o botão Partida) aplica a partida colocando a sonda fora da SOI da Terra com
@@ -120,7 +122,7 @@ Essa separação é o que faz o invariante 1 ser garantido pelo compilador: `usi
 
 | Pasta | Responsabilidade |
 | --- | --- |
-| `Engine/` | Domínio puro: matemática orbital, tempo, estado, ambiente/habitabilidade, `SimSession` e exploração (Fase 4). Zero Godot |
+| `Engine/` | Domínio puro: matemática orbital, tempo, estado, ambiente/habitabilidade, `SimSession`, exploração (Fase 4) e `LocalSky` (Fase 5). Zero Godot |
 | `Bridge/` | Adaptação: precisão, escala, ponte de eventos com o Godot; `ControlCatalog` dos atalhos |
 | `Render/` | Nós visuais em 3D com projeção ortográfica |
 | `UI/` | Painéis e controles |

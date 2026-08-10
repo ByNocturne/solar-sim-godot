@@ -28,6 +28,7 @@ public static class ControlCatalog
         "Delete: descarta a sonda ancorada",
         "F5 / F9: salva e carrega",
         "I: análise ambiental do corpo ancorado",
+        "K: entra ou sai do céu da Terra (vista de superfície)",
         "H: mostra ou esconde esta ajuda",
         "Passe o mouse nos rótulos do inspetor para o glossário",
     ];
@@ -38,7 +39,7 @@ public static class ControlCatalog
     public const string ReadmeSummary =
         "Espaço pausa · setas velocidade · R J2000 · Tab âncora · L escala · N nomes · Home vista "
         + "· H ajuda · I ensino · P / Shift+P sonda · T / Shift+T Terra→Marte · Delete descarta · "
-        + "F5 / F9 save/load · direito orbita · meio / Shift+direito arrasta · roda zoom.";
+        + "F5 / F9 save/load · K céu da Terra · direito orbita · meio / Shift+direito arrasta · roda zoom.";
 
     /// <summary>
     /// Fragmentos que o parágrafo de controles do AGENTS.md precisa citar. São as
@@ -52,6 +53,7 @@ public static class ControlCatalog
         "Home",
         "lista de atalhos",
         "I abre",
+        "K",
         "botão direito",
         "Shift+P",
         "Shift+T",

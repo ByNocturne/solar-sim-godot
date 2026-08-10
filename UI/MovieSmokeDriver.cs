@@ -4,8 +4,8 @@ using SolarSim.Bridge;
 namespace SolarSim.UI;
 
 /// <summary>
-/// Coreografia só no Movie Maker: ancora Fobos, Bennu, solta sonda e mostra Δv
-/// Terra→Marte, para os frames do smoke cobrirem os alvos da auditoria.
+/// Coreografia só no Movie Maker: ancora Fobos, Bennu, solta sonda, mostra Δv
+/// Terra→Marte e entra no céu da Terra, para os frames do smoke cobrirem a auditoria.
 /// </summary>
 /// <remarks>
 /// Não roda no jogo normal. <see cref="OS.HasFeature"/> "movie" liga só com
@@ -55,7 +55,7 @@ public partial class MovieSmokeDriver : Node
         _elapsed += delta;
         var step = (int)(_elapsed / StepSeconds);
 
-        if (step == _step || step > 3)
+        if (step == _step || step > 4)
         {
             return;
         }
@@ -119,6 +119,15 @@ public partial class MovieSmokeDriver : Node
                     _controls.ShowNotice("Smoke: sem solução Lambert Terra→Marte");
                 }
 
+                break;
+
+            case 4:
+                if (!_bridge.IsSurfaceSky)
+                {
+                    _bridge.ToggleSurfaceSky();
+                }
+
+                _controls.ShowNotice("Smoke: céu da Terra (K) — Sol/Lua/planetas");
                 break;
         }
     }

@@ -75,6 +75,11 @@ public partial class SpaceCamera : Camera3D
 
     public override void _UnhandledInput(InputEvent @event)
     {
+        if (_bridge?.IsSurfaceSky == true)
+        {
+            return;
+        }
+
         switch (@event)
         {
             case InputEventMouseButton button:

@@ -9,12 +9,13 @@ quadros — está em [AGENTS.md](AGENTS.md). O plano por marcos está em
 
 ## Estado
 
-**M0 a M22 estão concluídos** (Fase 3 + Fase 4). O motor carrega o Sistema Solar e o
+**M0 a M25 estão concluídos** (até a Fase 5 — céu da Terra). O motor carrega o Sistema Solar e o
 catálogo de corpos menores, propaga com taxas seculares (J₂ + GR), Yarkovsky onde
 declarado, e oferece Lambert + impulso em sondas. Erro radial dos planetas abaixo de
 0,02% contra DE441. Apresentação 3D ortográfica, com árvore, barra de tempo, inspetor e
 HUD de ensino (`I`). A Fase 4 empacota o motor (`SimSession`) e o loop de exploração
-cuidadosa; host CLI: `dotnet run --project Tools/ExplorationHost`.
+cuidadosa; host CLI: `dotnet run --project Tools/ExplorationHost`. A Fase 5: tecla **K**
+para o céu local na Terra (perspectiva, sem misturar com a escala orbital).
 
 ## Setup
 
@@ -38,7 +39,7 @@ Smoke visual (Movie Maker):
 
 ## Controles (resumo)
 
-Espaço pausa · setas velocidade · R J2000 · Tab âncora · L escala · N nomes · Home vista · H ajuda · I ensino · P / Shift+P sonda · T / Shift+T Terra→Marte · Delete descarta · F5 / F9 save/load · direito orbita · meio / Shift+direito arrasta · roda zoom.
+Espaço pausa · setas velocidade · R J2000 · Tab âncora · L escala · N nomes · Home vista · H ajuda · I ensino · P / Shift+P sonda · T / Shift+T Terra→Marte · Delete descarta · F5 / F9 save/load · K céu da Terra · direito orbita · meio / Shift+direito arrasta · roda zoom.
 
 ## Arquitetura
 

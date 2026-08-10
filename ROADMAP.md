@@ -1352,6 +1352,74 @@ Absorve do backlog “Empacotamento — Engine host-agnostic” o critério mín
 
 ---
 
+
+
+## Fase 5 — Céu da Terra (M23–M25)
+
+Vista de superfície: o observador está **na Terra** e olha o céu. Sem campanha, sem
+mineração, sem HUD de missão. O loop de exploração (M20–M22) permanece intacto e
+separado.
+
+**Decisões:**
+
+- Mesmo host Godot (`Main` / `SimBridge`); tecla **K** entra/sai do modo céu.
+- Site fixo (lat 40°, lon 0°); sem andar no mapa.
+- **Escala planetária:** só direções (azimute/elevação) em `double`; no Godot, marcadores
+  numa esfera celeste de **raio fixo**. O `ScaleMapper` / projeção orbital **não** entram
+  neste modo — evita misturar log-scale com perspectiva e trepidação `float`.
+- Câmera em **perspectiva** só no modo céu; a vista orbital continua ortográfica.
+- Estrelas/constelações ficam no backlog de Render.
+
+```mermaid
+graph LR
+    M19[M19 Lambert] --> M23[M23 LocalSky]
+    M23 --> M24[M24 Modo ceu Godot]
+    M24 --> M25[M25 Smoke e docs]
+```
+
+---
+
+
+
+## M23 — Matemática do observador (LocalSky) — **Concluído**
+
+- [x] `Engine/Core/LocalSky.cs` — JD + lat/lon + posições eclípticas → azimute/elevação
+- [x] Observador na superfície (raio da Terra + rotação sidérrea + obliquidade do perfil)
+- [x] Testes: no decorrer de um dia o Sol passa acima e abaixo do horizonte; Lua com
+  elevação finita; direção unitária estável
+- [x] Zero Godot; zero `ScaleMapper`
+
+**Pronto quando:** ~~az/el testáveis sem Godot.~~ **Concluído** com os testes da Fase 5.
+
+---
+
+
+
+## M24 — Modo céu no Godot — **Concluído**
+
+- [x] Câmera perspectiva na origem; chão simples; fundo escuro
+- [x] Marcadores em `R × direção` (elevação ≥ 0); look com mouse
+- [x] Pipeline orbital escondido enquanto o modo está ativo
+- [x] Fachada `ToggleSurfaceSky` / `IsSurfaceSky` no `SimBridge`
+- [x] ControlCatalog + README/AGENTS (tecla K)
+
+**Pronto quando:** ~~K mostra Sol/Lua/planetas; tempo move o céu; K restaura o orbital.~~
+**Concluído** com a Fase 5.
+
+---
+
+
+
+## M25 — Higiene e verificação — **Concluído**
+
+- [x] Movie smoke: passo no modo céu
+- [x] ROADMAP / docs alinhados
+- [x] Escala orbital intacta ao sair do modo
+
+**Pronto quando:** ~~smoke e atalhos coerentes.~~ **Concluído** com a Fase 5.
+
+---
+
 ---
 
 
@@ -1578,6 +1646,9 @@ graph LR
     M14 --> M21[M21 Exploracao]
     M20 --> M21
     M21 --> M22[M22 Loop cuidado]
+    M22 --> M23[M23 LocalSky]
+    M23 --> M24[M24 Ceu Godot]
+    M24 --> M25[M25 Smoke ceu]
 ```
 
 

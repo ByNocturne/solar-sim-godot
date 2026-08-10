@@ -127,6 +127,10 @@ public partial class TimeControls : CanvasLayer
                 GetParent()?.GetNodeOrNull<TeachingHud>("TeachingHud")?.Toggle();
                 break;
 
+            case Key.K:
+                _bridge.ToggleSurfaceSky();
+                break;
+
             case Key.P:
                 Launch(key.ShiftPressed ? EscapeFactor : OrbitFactor);
                 break;

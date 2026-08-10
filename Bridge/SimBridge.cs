@@ -109,6 +109,11 @@ public partial class SimBridge : Node3D
 
     public DateTime UtcDateTime => _sim.Time.UtcDateTime;
 
+    /// <summary>Modo céu da Terra ativo (perspectiva, esfera celeste de raio fixo).</summary>
+    public bool IsSurfaceSky => _surfaceSky?.IsActive == true;
+
+    private SurfaceSkyView? _surfaceSky;
+
     public override void _Ready()
     {
         _sim = new SimEngine(LoadRepository());
@@ -222,6 +227,158 @@ public partial class SimBridge : Node3D
     public void ResetToEpoch() => _sim.Time.ResetToEpoch();
 
     public void JumpTo(DateTime utc) => _sim.Time.JumpTo(utc);
+
+    /// <summary>
+    /// Alterna o modo céu da Terra. Não usa <see cref="ScaleMapper"/>: só direções locais.
+    /// </summary>
+    public void ToggleSurfaceSky()
+    {
+        if (_surfaceSky is null || !_sim.Contains("earth"))
+        {
+            return;
+        }
+
+        if (_surfaceSky.IsActive)
+        {
+            _surfaceSky.SetActive(false);
+            SetOrbitalPipelineVisible(true);
+            GetNodeOrNull<SpaceCamera>("SpaceCamera")?.MakeCurrent();
+            return;
+        }
+
+        AnchorTo("earth");
+        SeekDaylightSky();
+        SetOrbitalPipelineVisible(false);
+        _surfaceSky.SetActive(true);
+    }
+
+    /// <summary>
+    /// Escolhe o instante (nas próximas 24 h) em que o Sol está mais alto no site padrão,
+    /// para o modo céu não abrir sob um horizonte vazio.
+    /// </summary>
+    private void SeekDaylightSky()
+    {
+        if (!_environment.TryGetEnvironment("earth", out var profile))
+        {
+            return;
+        }
+
+        var earth = _sim.BodyOf("earth");
+        var lat = AstroConstants.DegreesToRadians(LocalSky.DefaultLatitudeDeg);
+        var lon = AstroConstants.DegreesToRadians(LocalSky.DefaultLongitudeDeg);
+        var start = _sim.Time.JulianDate;
+        var bestJd = start;
+        var bestEl = double.NegativeInfinity;
+
+        for (var step = 0; step <= 48; step++)
+        {
+            var jd = start + step / 48.0;
+            var observer = LocalSky.ObserverFromEarthCenterKm(
+                lat,
+                lon,
+                jd,
+                earth.RadiusKm,
+                profile.RotationPeriodSeconds,
+                profile.ObliquityRad);
+            var coords = LocalSky.Look(
+                _sim.PositionAt("sun", jd),
+                _sim.PositionAt("earth", jd),
+                observer,
+                profile.ObliquityRad);
+
+            if (coords.ElevationRad > bestEl)
+            {
+                bestEl = coords.ElevationRad;
+                bestJd = jd;
+            }
+        }
+
+        _sim.Time.JumpTo(bestJd);
+        // Publica um quadro na nova data para quem escuta FrameReady.
+        _sim.Advance(0.0);
+    }
+
+    /// <summary>
+    /// Marcadores acima do horizonte no site padrão, em coordenadas de cena (R×direção ENU).
+    /// </summary>
+    public IReadOnlyList<SurfaceSkyMarker> SurfaceSkyMarkers()
+    {
+        if (!_environment.TryGetEnvironment("earth", out var profile))
+        {
+            return Array.Empty<SurfaceSkyMarker>();
+        }
+
+        var earth = _sim.BodyOf("earth");
+        var jd = _sim.Time.JulianDate;
+        var lat = AstroConstants.DegreesToRadians(LocalSky.DefaultLatitudeDeg);
+        var lon = AstroConstants.DegreesToRadians(LocalSky.DefaultLongitudeDeg);
+        var observer = LocalSky.ObserverFromEarthCenterKm(
+            lat,
+            lon,
+            jd,
+            earth.RadiusKm,
+            profile.RotationPeriodSeconds,
+            profile.ObliquityRad);
+        var earthPos = _sim.PositionAt("earth", jd);
+
+        var markers = new List<SurfaceSkyMarker>();
+        foreach (var body in _sim.Bodies)
+        {
+            if (!IsSurfaceSkyBody(body))
+            {
+                continue;
+            }
+
+            var coords = LocalSky.Look(
+                _sim.PositionAt(body.Id, jd),
+                earthPos,
+                observer,
+                profile.ObliquityRad);
+
+            if (!coords.AboveHorizon)
+            {
+                continue;
+            }
+
+            var enu = LocalSky.DirectionEnu(coords);
+            var r = SurfaceSkyView.CelestialRadius;
+            markers.Add(new SurfaceSkyMarker(
+                body.Id,
+                body.Name,
+                BodyPalette.Of(body.ColorRgb),
+                new Vector3((float)(enu.X * r), (float)(enu.Y * r), (float)(enu.Z * r))));
+        }
+
+        return markers;
+    }
+
+    private static bool IsSurfaceSkyBody(CelestialBodyData body)
+        => body.Id != "earth"
+            && (body.Kind is BodyKind.Star or BodyKind.Planet
+                || body.Id == "moon");
+
+    private void SetOrbitalPipelineVisible(bool visible)
+    {
+        foreach (var (id, node) in _bodyNodes)
+        {
+            node.Visible = visible && IsBodyVisible(id);
+        }
+
+        foreach (var (id, orbit) in _orbitNodes)
+        {
+            orbit.Visible = visible && IsBodyVisible(id);
+        }
+
+        if (GetNodeOrNull<BodyLabels>("BodyLabels") is { } labels)
+        {
+            labels.Visible = visible;
+        }
+
+        if (GetNodeOrNull<SpaceCamera>("SpaceCamera") is { } camera)
+        {
+            camera.Visible = visible;
+        }
+    }
 
     /// <summary>
     /// Retrato do corpo no instante corrente, montado por consulta ao motor. Cada
@@ -702,6 +859,10 @@ public partial class SimBridge : Node3D
         var teaching = new TeachingHud { Name = "TeachingHud" };
         AddChild(teaching);
         teaching.Attach(this);
+
+        _surfaceSky = new SurfaceSkyView { Name = "SurfaceSkyView" };
+        AddChild(_surfaceSky);
+        _surfaceSky.Attach(this);
     }
 
     private void AddOrbitNode(CelestialBodyData body)
