@@ -1420,6 +1420,49 @@ graph LR
 
 ---
 
+
+
+## Eras do produto (depois de M25)
+
+A numeração **Fase N / Mxx** da linha Sim+Ponte **encerra em M25**. Não há Fase 6/7/100:
+o próximo bloco é a **Era Jogo**, com marcos **J1, J2, …**.
+
+| Era | Escopo | Numeração |
+| --- | --- | --- |
+| **Sim** | Motor + UI orbital | M0–M19 (histórico) |
+| **Ponte** | `SimSession`, exploração domínio, céu protótipo no sim (K) | M20–M25 (histórico) |
+| **Jogo** | Estar no lugar — host próprio | **J1, J2, …** |
+
+Backlog do simulador (N-corpos, VSOP, constelações) continua **sem número de fase**.
+
+```mermaid
+graph LR
+    Engine[SolarSim.Engine]
+    Main[Main.tscn SimBridge]
+    Game[Game.tscn GameBridge]
+    Boot[Boot.tscn]
+    Engine --> Main
+    Engine --> Game
+    Boot -->|movie| Main
+    Boot -->|F5| Game
+```
+
+---
+
+
+
+## J1 — Host do jogo (cena própria) — **Concluído**
+
+- [x] `Scenes/Boot.tscn` — Movie Maker → Main; F5 → Game
+- [x] `Scenes/Game.tscn` + `Bridge/GameBridge.cs` — céu da Terra sem SystemTree/Inspector
+- [x] `EarthSurfaceSky` / `GodotDataFiles` / `ISurfaceSkySource` — céu reutilizado sem acoplar ao toggle K
+- [x] `Main` / `SimBridge` / tecla K **permanecem** (laboratório)
+- [x] Do jogo: **S** abre o simulador
+
+**Pronto quando:** ~~F5 abre só o céu; smoke do sim intacto via Boot+movie.~~ **Concluído.**
+
+---
+
 ---
 
 
@@ -1488,9 +1531,17 @@ solar-sim-godot/
 │   ├── Application/
 │   │   └── SimSession.cs                # M20: fachada host-agnostic
 │   ├── Exploration/                     # M21–M22: cuidado, carga, campanha
+│   ├── Core/
+│   │   └── LocalSky.cs                  # M23: az/el do observador
 │   └── SimEngine.cs
 ├── Bridge/                          # CAMADA DE ADAPTAÇÃO
+│   ├── Boot.cs                      # J1: movie→Main, F5→Game
+│   ├── GameBridge.cs                # J1: host do jogo
 │   ├── SimBridge.cs                 # fachada: único caminho da UI até o motor
+│   ├── EarthSurfaceSky.cs           # céu compartilhado sim/jogo
+│   ├── GodotDataFiles.cs            # res:// → texto para o motor
+│   ├── ISurfaceSkySource.cs
+│   ├── SurfaceSkyMarker.cs
 │   ├── ViewportTransformer.cs
 │   ├── ScaleMapper.cs
 │   ├── ScaleLayout.cs
@@ -1513,7 +1564,9 @@ solar-sim-godot/
 │   ├── TimeControls.cs
 │   └── SystemTree.cs
 ├── Scenes/
-│   └── Main.tscn                    # um nó só, com o SimBridge; o resto é código
+│   ├── Boot.tscn                    # J1: movie→Main, F5→Game
+│   ├── Game.tscn                    # J1: host do jogo
+│   └── Main.tscn                    # simulador; SimBridge
 ├── Tests/                           # referencia apenas Engine/
 │   ├── SolarSim.Tests.csproj
 │   ├── ArchitectureTests.cs         # guardião do invariante 1

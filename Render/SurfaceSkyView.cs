@@ -5,7 +5,7 @@ using SolarSim.Engine.Core;
 namespace SolarSim.Render;
 
 /// <summary>
-/// Modo céu da Terra: câmera perspectiva na origem, marcadores numa esfera de raio fixo.
+/// Céu da Terra: câmera perspectiva na origem, marcadores numa esfera de raio fixo.
 /// Não usa <see cref="ScaleMapper"/> — só direções ENU do <see cref="LocalSky"/>.
 /// </summary>
 public partial class SurfaceSkyView : Node3D
@@ -15,9 +15,10 @@ public partial class SurfaceSkyView : Node3D
 
     private const float LookSensitivity = 0.004f;
 
-    private SimBridge? _bridge;
+    private ISurfaceSkySource? _source;
     private Camera3D _camera = null!;
     private Node3D _markers = null!;
+    private Label3D _hint = null!;
     private readonly Dictionary<string, MeshInstance3D> _meshes = new(StringComparer.Ordinal);
     private readonly Dictionary<string, Label3D> _labels = new(StringComparer.Ordinal);
     private bool _active;
@@ -27,7 +28,18 @@ public partial class SurfaceSkyView : Node3D
 
     public bool IsActive => _active;
 
-    public void Attach(SimBridge bridge) => _bridge = bridge;
+    public void Attach(ISurfaceSkySource source, string hintText)
+    {
+        _source = source;
+        if (_hint is not null)
+        {
+            _hint.Text = hintText;
+        }
+        else
+        {
+            SetMeta("pending_hint", hintText);
+        }
+    }
 
     public override void _Ready()
     {
@@ -70,14 +82,18 @@ public partial class SurfaceSkyView : Node3D
         };
         AddChild(_camera);
 
-        AddChild(new Label3D
+        var hint = HasMeta("pending_hint")
+            ? GetMeta("pending_hint").AsString()
+            : "Céu da Terra — arraste com o direito";
+        _hint = new Label3D
         {
-            Text = "Céu da Terra — K volta · arraste com o direito",
+            Text = hint,
             FontSize = 28,
             Modulate = new Color(0.85f, 0.9f, 1.0f),
             Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
             Position = new Vector3(0.0f, 2.2f, -8.0f),
-        });
+        };
+        AddChild(_hint);
 
         ApplyLook();
     }
@@ -100,18 +116,17 @@ public partial class SurfaceSkyView : Node3D
         }
     }
 
-    /// <summary>Olha para o Sol se estiver no céu; senão, para o sul (azimute π).</summary>
     private void AimAtSunOrSouth()
     {
         _yaw = Mathf.Pi;
         _pitch = 0.35f;
 
-        if (_bridge is null)
+        if (_source is null)
         {
             return;
         }
 
-        foreach (var marker in _bridge.SurfaceSkyMarkers())
+        foreach (var marker in _source.SurfaceSkyMarkers())
         {
             if (marker.BodyId != "sun")
             {
@@ -127,7 +142,7 @@ public partial class SurfaceSkyView : Node3D
 
     public override void _Process(double delta)
     {
-        if (!_active || _bridge is null)
+        if (!_active || _source is null)
         {
             return;
         }
@@ -173,13 +188,13 @@ public partial class SurfaceSkyView : Node3D
 
     private void RefreshMarkers()
     {
-        if (_bridge is null)
+        if (_source is null)
         {
             return;
         }
 
         var seen = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var marker in _bridge.SurfaceSkyMarkers())
+        foreach (var marker in _source.SurfaceSkyMarkers())
         {
             seen.Add(marker.BodyId);
             if (!_meshes.TryGetValue(marker.BodyId, out var mesh))

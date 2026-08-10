@@ -24,7 +24,7 @@ public readonly record struct RenderFrame(
 /// Único nó do Godot que conhece o motor. Avança o tempo, projeta o snapshot em pixels,
 /// posiciona a câmera e publica um quadro para quem estiver escutando.
 /// </summary>
-public partial class SimBridge : Node3D
+public partial class SimBridge : Node3D, ISurfaceSkySource
 {
     /// <summary>Limites do multiplicador de tempo, em módulo.</summary>
     private const double MinSpeedMultiplier = 1.0;
@@ -116,8 +116,8 @@ public partial class SimBridge : Node3D
 
     public override void _Ready()
     {
-        _sim = new SimEngine(LoadRepository());
-        _environment = new EnvironmentService(LoadEnvironments());
+        _sim = new SimEngine(GodotDataFiles.LoadRepository());
+        _environment = new EnvironmentService(GodotDataFiles.LoadEnvironments());
         _environment.PotentialBiosphereDetected += args => PotentialBiosphereDetected?.Invoke(args);
 
         // A escala é calibrada em frações da altura da janela, não em pixels fixos: sem
@@ -258,43 +258,11 @@ public partial class SimBridge : Node3D
     /// </summary>
     private void SeekDaylightSky()
     {
-        if (!_environment.TryGetEnvironment("earth", out var profile))
-        {
-            return;
-        }
-
-        var earth = _sim.BodyOf("earth");
-        var lat = AstroConstants.DegreesToRadians(LocalSky.DefaultLatitudeDeg);
-        var lon = AstroConstants.DegreesToRadians(LocalSky.DefaultLongitudeDeg);
-        var start = _sim.Time.JulianDate;
-        var bestJd = start;
-        var bestEl = double.NegativeInfinity;
-
-        for (var step = 0; step <= 48; step++)
-        {
-            var jd = start + step / 48.0;
-            var observer = LocalSky.ObserverFromEarthCenterKm(
-                lat,
-                lon,
-                jd,
-                earth.RadiusKm,
-                profile.RotationPeriodSeconds,
-                profile.ObliquityRad);
-            var coords = LocalSky.Look(
-                _sim.PositionAt("sun", jd),
-                _sim.PositionAt("earth", jd),
-                observer,
-                profile.ObliquityRad);
-
-            if (coords.ElevationRad > bestEl)
-            {
-                bestEl = coords.ElevationRad;
-                bestJd = jd;
-            }
-        }
-
-        _sim.Time.JumpTo(bestJd);
-        // Publica um quadro na nova data para quem escuta FrameReady.
+        var best = EarthSurfaceSky.BestDaylightJulianDate(
+            _sim,
+            _environment,
+            _sim.Time.JulianDate);
+        _sim.Time.JumpTo(best);
         _sim.Advance(0.0);
     }
 
@@ -302,60 +270,7 @@ public partial class SimBridge : Node3D
     /// Marcadores acima do horizonte no site padrão, em coordenadas de cena (R×direção ENU).
     /// </summary>
     public IReadOnlyList<SurfaceSkyMarker> SurfaceSkyMarkers()
-    {
-        if (!_environment.TryGetEnvironment("earth", out var profile))
-        {
-            return Array.Empty<SurfaceSkyMarker>();
-        }
-
-        var earth = _sim.BodyOf("earth");
-        var jd = _sim.Time.JulianDate;
-        var lat = AstroConstants.DegreesToRadians(LocalSky.DefaultLatitudeDeg);
-        var lon = AstroConstants.DegreesToRadians(LocalSky.DefaultLongitudeDeg);
-        var observer = LocalSky.ObserverFromEarthCenterKm(
-            lat,
-            lon,
-            jd,
-            earth.RadiusKm,
-            profile.RotationPeriodSeconds,
-            profile.ObliquityRad);
-        var earthPos = _sim.PositionAt("earth", jd);
-
-        var markers = new List<SurfaceSkyMarker>();
-        foreach (var body in _sim.Bodies)
-        {
-            if (!IsSurfaceSkyBody(body))
-            {
-                continue;
-            }
-
-            var coords = LocalSky.Look(
-                _sim.PositionAt(body.Id, jd),
-                earthPos,
-                observer,
-                profile.ObliquityRad);
-
-            if (!coords.AboveHorizon)
-            {
-                continue;
-            }
-
-            var enu = LocalSky.DirectionEnu(coords);
-            var r = SurfaceSkyView.CelestialRadius;
-            markers.Add(new SurfaceSkyMarker(
-                body.Id,
-                body.Name,
-                BodyPalette.Of(body.ColorRgb),
-                new Vector3((float)(enu.X * r), (float)(enu.Y * r), (float)(enu.Z * r))));
-        }
-
-        return markers;
-    }
-
-    private static bool IsSurfaceSkyBody(CelestialBodyData body)
-        => body.Id != "earth"
-            && (body.Kind is BodyKind.Star or BodyKind.Planet
-                || body.Id == "moon");
+        => EarthSurfaceSky.Markers(_sim, _environment, _sim.Time.JulianDate);
 
     private void SetOrbitalPipelineVisible(bool visible)
     {
@@ -761,49 +676,6 @@ public partial class SimBridge : Node3D
             ScaleMap.ToPixels(localKm, _projector.Layout.LevelOf(parentId)));
 
     /// <summary>
-    /// Ler o arquivo é responsabilidade da Bridge porque, no jogo exportado, os dados
-    /// vivem dentro do pacote e só o <c>FileAccess</c> do Godot sabe abri-los. O motor
-    /// recebe apenas o texto.
-    /// </summary>
-    private static IBodyRepository LoadRepository()
-    {
-        var systemPath = $"res://{JsonBodyRepository.DefaultRelativePath}";
-        var catalogPath = $"res://{JsonBodyRepository.DefaultCatalogRelativePath}";
-
-        return JsonBodyRepository
-            .FromJson(ReadDataFile(systemPath), systemPath)
-            .WithCatalog(ReadDataFile(catalogPath), catalogPath);
-    }
-
-    private static string ReadDataFile(string path)
-    {
-        // Qualificado porque System.IO.FileAccess também está no escopo.
-        using var file = Godot.FileAccess.Open(path, Godot.FileAccess.ModeFlags.Read);
-
-        if (file is null)
-        {
-            throw new SystemDataException(
-                $"Não foi possível abrir '{path}': {Godot.FileAccess.GetOpenError()}.");
-        }
-
-        return file.GetAsText();
-    }
-
-    private static IReadOnlyDictionary<string, BodyEnvironment> LoadEnvironments()
-    {
-        var path = $"res://{EnvironmentLoader.DefaultRelativePath}";
-
-        try
-        {
-            return EnvironmentLoader.Parse(ReadDataFile(path));
-        }
-        catch (SystemDataException error)
-        {
-            throw new SystemDataException($"Erro em '{path}'. {error.Message}", error);
-        }
-    }
-
-    /// <summary>
     /// A árvore é montada em código em vez de em cenas .tscn porque a decisão entre 2D e
     /// 3D só acontece no M6: assim não há arquivos de cena para refazer.
     /// </summary>
@@ -861,8 +733,8 @@ public partial class SimBridge : Node3D
         teaching.Attach(this);
 
         _surfaceSky = new SurfaceSkyView { Name = "SurfaceSkyView" };
+        _surfaceSky.Attach(this, "Céu da Terra — K volta · arraste com o direito");
         AddChild(_surfaceSky);
-        _surfaceSky.Attach(this);
     }
 
     private void AddOrbitNode(CelestialBodyData body)

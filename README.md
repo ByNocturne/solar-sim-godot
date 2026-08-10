@@ -9,13 +9,10 @@ quadros — está em [AGENTS.md](AGENTS.md). O plano por marcos está em
 
 ## Estado
 
-**M0 a M25 estão concluídos** (até a Fase 5 — céu da Terra). O motor carrega o Sistema Solar e o
-catálogo de corpos menores, propaga com taxas seculares (J₂ + GR), Yarkovsky onde
-declarado, e oferece Lambert + impulso em sondas. Erro radial dos planetas abaixo de
-0,02% contra DE441. Apresentação 3D ortográfica, com árvore, barra de tempo, inspetor e
-HUD de ensino (`I`). A Fase 4 empacota o motor (`SimSession`) e o loop de exploração
-cuidadosa; host CLI: `dotnet run --project Tools/ExplorationHost`. A Fase 5: tecla **K**
-para o céu local na Terra (perspectiva, sem misturar com a escala orbital).
+**M0–M25 + J1.** Simulador orbital (Main) e host do jogo (Game — céu da Terra). F5 abre o
+jogo via `Boot.tscn`; feature `movie` abre o sim. **S** no jogo troca para o simulador.
+Motor com taxas seculares, Lambert, exploração domínio e `LocalSky`. Erro radial dos
+planetas abaixo de 0,02% contra DE441.
 
 ## Setup
 

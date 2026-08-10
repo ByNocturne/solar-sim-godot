@@ -5,7 +5,8 @@ como base para trabalho futuro com missões e transferências orbitais.
 
 ## Estado atual
 
-Os marcos M0 a M25 estão concluídos e verificados em testes (`dotnet test`). O motor
+Os marcos M0 a M25 (Sim + Ponte) e o **J1** (host do jogo) estão concluídos e
+verificados em testes (`dotnet test`). O motor
 carrega o Sistema Solar de `Data/solar_system_j2000.json` — Sol, oito planetas, a Lua,
 Fobos e Deimos, as galileanas e Titã — e perfis ambientais de
 `Data/body_environment_j2000.json`. Compõe a
@@ -30,16 +31,21 @@ o loop de **exploração cuidadosa** (risco ambiental → carga → EVA → volt
 alimentarem a próxima ida (gelo → propelente). Host CLI: `dotnet run --project
 Tools/ExplorationHost`. A Fase 5 (M23–M25) acrescenta o **céu da Terra**: tecla K, vista
 de superfície em perspectiva com Sol/Lua/planetas por direção (esfera celeste de raio
-fixo — sem `ScaleMapper`). Monorepo mantido; NuGet/split só com segundo consumidor externo.
+fixo — sem `ScaleMapper`). A **Era Jogo** começa no J1: F5 abre `Scenes/Game.tscn` (céu
+sem UI do sim); **S** no jogo vai ao simulador; Movie Maker continua em Main. Monorepo
+mantido; NuGet/split só com segundo consumidor externo.
 Ideias maiores (“O simulador”, N-corpos híbrido) ficam no backlog sem fase — ver
 [ROADMAP.md](ROADMAP.md).
 
-Para ver rodando: abra o projeto no Godot e pressione F5, ou use
-`scripts/Resolve-Godot.ps1` / `scripts/movie-smoke.ps1` no Windows. Espaço pausa, setas
+Para ver rodando: abra o projeto no Godot e pressione F5 (entra no **jogo** — céu da
+Terra). No jogo, **S** abre o simulador orbital. Ou use
+`scripts/Resolve-Godot.ps1` / `scripts/movie-smoke.ps1` no Windows (o smoke usa a feature
+`movie` e cai no Main). Espaço pausa, setas
 ajustam a velocidade, R volta para J2000, Tab e Shift+Tab ancoram a câmera no corpo
 seguinte e no anterior, um clique ancora no corpo apontado, L alterna entre escala
 logarítmica e linear, N mostra ou esconde os nomes, Home devolve a vista inicial, H
-mostra a lista de atalhos, I abre o ensino ambiental, K entra no céu da Terra, a roda dá zoom, o botão direito
+mostra a lista de atalhos, I abre o ensino ambiental, K entra no céu da Terra (protótipo
+no sim), a roda dá zoom, o botão direito
 gira a câmera e o do meio — ou Shift com o direito — arrasta. P e Shift+P soltam uma
 sonda em órbita ou em fuga do corpo ancorado, T mostra o Δv Terra→Marte na data atual e
 Shift+T (ou o botão Partida) aplica a partida colocando a sonda fora da SOI da Terra com

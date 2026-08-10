@@ -11,14 +11,12 @@ config_version=5
 [application]
 
 config/name="Solar Sim"
-config/description="Simulador do Sistema Solar com propagacao kepleriana analitica."
-run/main_scene="res://Scenes/Main.tscn"
+config/description="Simulador do Sistema Solar e host do jogo (céu da Terra)."
+run/main_scene="res://Scenes/Boot.tscn"
 config/features=PackedStringArray("4.7", "C#", "Forward Plus")
 
 [display]
 
-; Declarado em vez de herdado do padrao do Godot: ScaleLayout dimensiona o espaco de
-; tela de cada nivel da hierarquia a partir desta altura.
 window/size/viewport_width=1920
 window/size/viewport_height=1080
 
