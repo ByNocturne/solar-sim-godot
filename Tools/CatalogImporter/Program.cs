@@ -39,6 +39,8 @@ try
                 + "em vez de editar aqui.",
             "Nenhum corpo declara 'orbit.rates': a precessão que o motor sabe calcular "
                 + "sozinho não se declara, e a que ele não sabe não está medida para estes corpos.",
+            "Yarkovsky e pressão de radiação vão em 'nonGravitational', não em 'orbit.rates': "
+                + "só quem teve o efeito medido declara o parâmetro.",
             "Onde não há GM medido, entra 'densityGCm3' e o motor deriva a massa da esfera "
                 + "equivalente. É estimativa, e serve à esfera de influência, não à balança.",
         ]);

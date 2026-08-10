@@ -96,6 +96,8 @@ public static class TeachingExplain
                 "Dentro do limite de Roche rígido: nem um corpo coeso se mantém pela gravidade própria a esta distância.",
             "ring_zone" =>
                 "Tem faixa onde escombros de gelo não se juntam em lua — é onde um anel pode existir.",
+            "yarkovsky_drift" =>
+                "Drift secular do semi-eixo por Yarkovsky: a radiação térmica de um corpo que gira empurra a órbita para dentro ou para fora.",
             "polar_ice" => "Calotas polares / gelo polar no modelo de zonas.",
             "o2_ch4_disequilibrium" => "Desequilíbrio O₂+CH₄ (biosignature química).",
             "ozone_uv_shield" => "Camada de O₃ como escudo UV secundário.",

@@ -201,10 +201,12 @@ public sealed class CatalogImporterTests
         string excentricidade = "0.1",
         string mu = "",
         string densidade = "2.0",
+        string yarkovsky = "",
+        string beta = "",
         string nota = "")
         => "id,name,kind,family,colorRgb,epochJd,semiMajorAxisAu,eccentricity,inclinationDeg,"
             + "longitudeOfAscendingNodeDeg,argumentOfPeriapsisDeg,meanAnomalyDeg,radiusKm,"
-            + "muKm3S2,densityGCm3,note\n"
+            + "muKm3S2,densityGCm3,yarkovskyDaAuPerMyr,radiationPressureBeta,note\n"
             + $"teste,Teste,{kind},Família,,{epoca},{semiEixo},{excentricidade},5.0,10.0,20.0,"
-            + $"30.0,10.0,{mu},{densidade},{nota}\n";
+            + $"30.0,10.0,{mu},{densidade},{yarkovsky},{beta},{nota}\n";
 }

@@ -31,12 +31,19 @@ public partial class TimeControls : CanvasLayer
         "Home: devolve a vista inicial",
         "Roda: zoom     Botão direito: arrasta",
         "P / Shift+P: solta uma sonda em órbita ou em fuga",
+        "T: preview Δv Terra→Marte    Shift+T: aplica partida na sonda",
         "Delete: descarta a sonda ancorada",
         "F5 / F9: salva e carrega",
         "I: análise ambiental do corpo ancorado",
         "H: mostra ou esconde esta ajuda",
         "Passe o mouse nos rótulos do inspetor para o glossário",
     ];
+
+    /// <summary>
+    /// Tempo de voo Hohmann Terra→Marte aproximado, em dias. É o valor clássico da
+    /// literatura (~259 d) e o que o preview de teclado usa.
+    /// </summary>
+    private const double EarthMarsHohmannDays = 259.0;
 
     /// <summary>
     /// Fração da velocidade de escape com que cada sonda parte. A primeira fica em órbita
@@ -142,6 +149,18 @@ public partial class TimeControls : CanvasLayer
 
             case Key.P:
                 Launch(key.ShiftPressed ? EscapeFactor : OrbitFactor);
+                break;
+
+            case Key.T:
+                if (key.ShiftPressed)
+                {
+                    ApplyEarthMarsDeparture();
+                }
+                else
+                {
+                    PreviewEarthMars();
+                }
+
                 break;
 
             case Key.Delete:
@@ -298,6 +317,50 @@ public partial class TimeControls : CanvasLayer
             : "Só é possível descartar uma sonda, e é preciso estar ancorado nela.");
     }
 
+    /// <summary>
+    /// Consulta o Δv Terra→Marte na data atual. Não altera a simulação.
+    /// </summary>
+    private void PreviewEarthMars()
+    {
+        if (_bridge is null)
+        {
+            return;
+        }
+
+        if (_bridge.BestTransferPreview("earth", "mars", EarthMarsHohmannDays) is not { } preview)
+        {
+            Notify("Sem solução Lambert Terra→Marte nesta data/ToF.");
+            return;
+        }
+
+        Notify(
+            $"Terra→Marte em {DisplayFormat.Duration(preview.TimeOfFlightDays)}: "
+                + $"Δv {DisplayFormat.Speed(preview.TotalDeltaVKmS)} "
+                + $"(partida {DisplayFormat.Speed(preview.DepartureDeltaVKmS)}, "
+                + $"chegada {DisplayFormat.Speed(preview.ArrivalDeltaVKmS)}).");
+    }
+
+    /// <summary>
+    /// Aplica o Δv de partida do preview à sonda ancorada no Sol.
+    /// </summary>
+    private void ApplyEarthMarsDeparture()
+    {
+        if (_bridge is null)
+        {
+            return;
+        }
+
+        if (_bridge.BestTransferPreview("earth", "mars", EarthMarsHohmannDays) is not { } preview)
+        {
+            Notify("Sem solução Lambert para aplicar.");
+            return;
+        }
+
+        Notify(_bridge.ApplyTransferDeparture(preview)
+            ? $"Impulso de partida aplicado: {DisplayFormat.Speed(preview.DepartureDeltaVKmS)}."
+            : "Ancore uma sonda que orbite o Sol para aplicar a partida.");
+    }
+
     private void Save()
     {
         if (_bridge is null)
@@ -330,7 +393,7 @@ public partial class TimeControls : CanvasLayer
     private void BuildHelp()
     {
         _help = Panels.Box();
-        Panels.AnchorCenter(_help, 420.0f, 330.0f);
+        Panels.AnchorCenter(_help, 420.0f, 360.0f);
         _help.Visible = false;
         AddChild(_help);
 

@@ -17,6 +17,7 @@
   "notes": [
     "Este arquivo é gerado. Editar o CSV da fonte e rodar o importador de novo, em vez de editar aqui.",
     "Nenhum corpo declara 'orbit.rates': a precessão que o motor sabe calcular sozinho não se declara, e a que ele não sabe não está medida para estes corpos.",
+    "Yarkovsky e pressão de radiação vão em 'nonGravitational', não em 'orbit.rates': só quem teve o efeito medido declara o parâmetro.",
     "Onde não há GM medido, entra 'densityGCm3' e o motor deriva a massa da esfera equivalente. É estimativa, e serve à esfera de influência, não à balança."
   ],
   "bodies": [
@@ -143,7 +144,10 @@
       "muKm3S2": 4.8904E-09,
       "radiusKm": 0.24222,
       "colorRgb": "#E08A4C",
-      "note": "GM medido pela OSIRIS-REx, via SBDB.",
+      "note": "GM medido pela OSIRIS-REx, via SBDB. Yarkovsky −19×10⁻⁴ UA/Myr (Chesley et al. 2014).",
+      "nonGravitational": {
+        "yarkovskyDaAuPerMyr": -0.0019
+      },
       "orbit": {
         "semiMajorAxisAu": 1.12892336246788,
         "eccentricity": 0.2046521729007511,

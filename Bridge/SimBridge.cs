@@ -303,6 +303,101 @@ public partial class SimBridge : Node3D
     }
 
     /// <summary>
+    /// Preview de transferência Lambert entre dois corpos. Só consulta: o motor não muda.
+    /// </summary>
+    public TransferPreview? PreviewTransfer(
+        string originBodyId,
+        string destinationBodyId,
+        double timeOfFlightDays,
+        bool shortWay = true)
+        => TransferPlanner.Preview(
+            _sim,
+            originBodyId,
+            destinationBodyId,
+            _sim.Time.JulianDate,
+            timeOfFlightDays,
+            shortWay);
+
+    /// <summary>
+    /// Melhor arco (curto ou longo) para a partida na data atual.
+    /// </summary>
+    public TransferPreview? BestTransferPreview(
+        string originBodyId,
+        string destinationBodyId,
+        double timeOfFlightDays)
+        => TransferPlanner.BestPreview(
+            _sim,
+            originBodyId,
+            destinationBodyId,
+            _sim.Time.JulianDate,
+            timeOfFlightDays);
+
+    /// <summary>
+    /// Varredura de janelas de transferência. Só consulta.
+    /// </summary>
+    public IReadOnlyList<TransferWindowSample> ScanTransferWindows(
+        string originBodyId,
+        string destinationBodyId,
+        double departureJdStart,
+        double departureJdEnd,
+        double departureStepDays,
+        double timeOfFlightDaysMin,
+        double timeOfFlightDaysMax,
+        double timeOfFlightStepDays)
+        => TransferPlanner.ScanWindows(
+            _sim,
+            originBodyId,
+            destinationBodyId,
+            departureJdStart,
+            departureJdEnd,
+            departureStepDays,
+            timeOfFlightDaysMin,
+            timeOfFlightDaysMax,
+            timeOfFlightStepDays);
+
+    /// <summary>
+    /// Aplica um impulso à sonda ancorada, no instante atual. Só corpo dinâmico.
+    /// </summary>
+    public bool ApplyImpulseToAnchored(Vector3D deltaVKmS)
+    {
+        if (_rig.AnchorBodyId is not { } bodyId || !_sim.IsDynamic(bodyId))
+        {
+            return false;
+        }
+
+        _sim.ApplyImpulse(bodyId, deltaVKmS, _sim.Time.JulianDate);
+
+        return true;
+    }
+
+    /// <summary>
+    /// Aplica o Δv de partida de um preview à sonda ancorada, se ela orbitar o mesmo
+    /// corpo central da transferência. A posição fica; a velocidade passa a ser a da
+    /// solução de Lambert.
+    /// </summary>
+    public bool ApplyTransferDeparture(in TransferPreview preview)
+    {
+        if (_rig.AnchorBodyId is not { } bodyId || !_sim.IsDynamic(bodyId))
+        {
+            return false;
+        }
+
+        var body = _sim.BodyOf(bodyId);
+
+        if (body.ParentId != preview.CentralBodyId)
+        {
+            return false;
+        }
+
+        var current = _sim.LocalStateAt(bodyId, _sim.Time.JulianDate);
+        var deltaV = preview.DepartureVelocityKmS - current.VelocityKmS;
+
+        _sim.ApplyImpulse(bodyId, deltaV, _sim.Time.JulianDate);
+
+        return true;
+    }
+
+    /// <summary>
     /// Remove o corpo ancorado, se ele tiver sido acrescentado em runtime, e devolve a
     /// âncora ao pai dele.
     /// </summary>

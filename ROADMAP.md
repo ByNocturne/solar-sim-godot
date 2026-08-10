@@ -1165,28 +1165,97 @@ anéis.~~ **Concluído:** build sem avisos e 526 testes passando, sendo 43 novos
 
 
 
-## M18 — Yarkovsky e pressão de radiação (drift secular)
+## M18 — Yarkovsky e pressão de radiação (drift secular) — **Concluído**
 
-- [ ] Drift documentado em elementos (`da/dt`, etc.), não força por quadro
-- [ ] Só corpos com parâmetros no JSON; planetas ignoram
-- [ ] Teste de ordem de grandeza com fixture ou NEO conhecido
+- [x] Drift documentado em elementos (`da/dt`, etc.), não força por quadro
+- [x] Só corpos com parâmetros no JSON; planetas ignoram
+- [x] Teste de ordem de grandeza com Bennu (−19×10⁻⁴ UA/Myr, Chesley et al. 2014)
+- [x] Fora do plano: linha no inspetor, flag de ensino e β via Poynting–Robertson
 
-**Pronto quando:** corpo com parâmetros NG muda `a` com JD de forma testável; invariante 4
-preservado.
+### Decisões e desvios
+
+**Yarkovsky entra como número medido, não como modelo térmico.** Spin, inércia térmica
+e forma decidiriam o sinal e a magnitude, e quase nenhum corpo os tem publicados juntos.
+O que a literatura entrega para NEOs medidos é `da/dt` em UA/Myr — e é isso que o arquivo
+declara em `nonGravitational.yarkovskyDaAuPerMyr`. O motor só converte para km/s e soma
+ao mesmo `OrbitalElementRates` que a relatividade e o achatamento já usam.
+
+**Não vai em `orbit.rates`.** Aquele campo é residual do que o motor não modela; Yarkovsky
+é modelado, só que a partir de um parâmetro declarado, porque inventar o número seria
+pior. A distinção está no JSON e na nota do catálogo: quem edita o CSV vê as duas colunas
+e sabe o que está fazendo.
+
+**Pressão de radiação é o coeficiente β, e vira Poynting–Robertson.** β é a razão entre
+a força de radiação e a gravidade do atrator. Para um asteróide típico o efeito é
+desprezível diante do Yarkovsky; existe para poeira e para quem declarar o parâmetro. A
+taxa depende de `a` e `e` na época, e depois anda linear — a mesma aproximação do J₂.
+
+**Planetas ficam de fora sem regra especial.** Sem o bloco `nonGravitational`, a taxa é
+zero. Bennu é o único corpo do catálogo que o traz hoje; acrescentar Apophis ou Itokawa é
+preencher a coluna no CSV e regenerar.
+
+**O inspetor mostra UA/Myr, não km/s.** Em km/s o drift de Bennu seria −9×10⁻⁹; na unidade
+da literatura é −0,0019 UA/Myr, o mesmo número que o arquivo declara.
+
+### Validação
+
+- **Bennu a −0,0019 UA/Myr**, conferido pela taxa e pela diferença do semi-eixo um milhão
+  de anos depois — e o mesmo tanto ao contrário, um milhão antes.
+- **−0,0019 UA/Myr são −284 m/ano**, o número em metros que a literatura cita ao lado.
+- **Terra, Marte e Ceres sem drift** de semi-eixo.
+- **β positivo encolhe `a` e `e`** na fixture analítica de Poynting–Robertson.
+- **Órbita aberta recusa `nonGravitational`** na carga, com a mesma lógica das taxas.
+
+**Pronto quando:** ~~corpo com parâmetros NG muda `a` com JD de forma testável; invariante 4
+preservado.~~ **Concluído:** build sem avisos e 536 testes passando, sendo 10 novos.
 
 ---
 
 
 
-## M19 — Lambert, janelas Δv e aplicar impulso
+## M19 — Lambert, janelas Δv e aplicar impulso — **Concluído**
 
-- [ ] `LambertSolver` (arco elíptico; hiperbólico só se couber sem estourar escopo)
-- [ ] Preview: A, B, JD partida, tempo de voo → Δv (consulta via `SimBridge`)
-- [ ] Varredura de janelas (grade JD × ToF)
-- [ ] **Aplicar impulso** na sonda ancorada → novo `TrajectoryArc`
+- [x] `LambertSolver` (arco elíptico e hiperbólico pela variável universal; 180° exato recusado)
+- [x] Preview: A, B, JD partida, tempo de voo → Δv (consulta via `SimBridge`)
+- [x] Varredura de janelas (grade JD × ToF)
+- [x] **Aplicar impulso** na sonda ancorada → novo `TrajectoryArc`
+- [x] Fora do plano: teclas T / Shift+T para preview e partida Terra→Marte
 
-**Pronto quando:** Terra→Marte na ordem de grandeza esperada; preview não altera estado;
-aplicar muda a trajetória de forma testável.
+### Decisões e desvios
+
+**Preview é consulta, e a fachada deixa isso explícito.** `TransferPlanner` e
+`SimBridge.PreviewTransfer` / `ScanTransferWindows` não chamam `Add`, `Remove` nem
+`ApplyImpulse`. O teste que fecha o critério mede posição da Terra e contagem de
+dinâmicos antes e depois.
+
+**O impulso emenda arco, como a SOI.** Mesma porta que a reatribuição de pai: estado →
+elementos → `Append` → `Adopt`. A posição não salta; a velocidade é que muda — e é isso
+que um impulso é. Corpo do arquivo é recusado: só dinâmico tem trajetória.
+
+**Lambert pela variável universal, não por Hohmann fechado.** Hohmann é o caso
+didático de 180°; a formulação clássica com parâmetro A anula nele, e o solver recusa
+em vez de inventar. O teste de ouro propaga a solução com o Kepler de sempre e confere
+que r₂ é alcançado. Terra→Marte usa a grade de janelas, porque em J2000 a geometria não
+é a Hohmann.
+
+**A grade devolve o melhor arco por célula.** Curto e longo são tentados; fica o de
+menor Δv total. A lista sai ordenada — o primeiro elemento é a melhor janela do
+retângulo pedido.
+
+**T consulta, Shift+T aplica.** O preview Terra→Marte com ToF de 259 d aparece no aviso
+da barra; aplicar exige sonda ancorada orbitando o Sol. Não há painel novo: o M19 é
+motor e fachada, e a tecla só expõe o que os testes já cobrem.
+
+### Validação
+
+- **Solução de Lambert propaga até r₂** a menos de 1.000 km.
+- **Terra→Marte** na grade de 800 dias: melhor Δv total entre 5 e 18 km/s.
+- **Preview não altera estado**; impulso cria o segundo arco; tempo reverso o desfaz.
+- **Depois do impulso a sonda encontra Marte** no fim do ToF da melhor janela.
+
+**Pronto quando:** ~~Terra→Marte na ordem de grandeza esperada; preview não altera estado;
+aplicar muda a trajetória de forma testável.~~ **Concluído:** build sem avisos e 544
+testes passando, sendo 8 novos.
 
 ---
 
@@ -1224,7 +1293,9 @@ solar-sim-godot/
 │   │   ├── SecularPropagator.cs         # M15: elementos avaliados em JD
 │   │   ├── BodyMass.cs                  # M16: GM e densidade, um do outro
 │   │   ├── RocheLimit.cs                # M17: limite fluido e rígido, e o destino
-│   │   └── RingEvaluator.cs             # M17: onde um anel caberia, e se caberia
+│   │   ├── RingEvaluator.cs             # M17: onde um anel caberia, e se caberia
+│   │   ├── NonGravitationalDrift.cs     # M18: Yarkovsky e Poynting–Robertson
+│   │   └── LambertSolver.cs             # M19: velocidades entre duas posições e um ToF
 │   ├── Models/
 │   │   ├── CelestialBodyData.cs
 │   │   ├── OrbitalElements.cs
@@ -1238,7 +1309,9 @@ solar-sim-godot/
 │   │   ├── BodyKind.cs                  # M16: classe dinâmica e o que é filtrável
 │   │   ├── SatelliteFate.cs             # M17
 │   │   ├── SatelliteTides.cs            # M17
-│   │   └── RingZone.cs                  # M17
+│   │   ├── RingZone.cs                  # M17
+│   │   ├── NonGravitationalParameters.cs # M18: da/dt e β declarados
+│   │   └── TransferPreview.cs           # M19: retrato e célula de janela
 │   ├── Data/
 │   │   ├── IBodyRepository.cs
 │   │   ├── DataLoader.cs
@@ -1248,6 +1321,7 @@ solar-sim-godot/
 │   │   ├── SystemDataException.cs
 │   │   └── EnvironmentLoader.cs         # M8
 │   ├── EnvironmentService.cs            # M8–M13: consulta ambiental f(JD)
+│   ├── TransferPlanner.cs               # M19: preview e grade sem mutar o motor
 │   └── SimEngine.cs
 ├── Bridge/                          # CAMADA DE ADAPTAÇÃO
 │   ├── SimBridge.cs                 # fachada: único caminho da UI até o motor
@@ -1351,8 +1425,8 @@ Godot, `SimBridge`, `UI/` ou `Render/`:
 - Critério: host mínimo fora do Godot roda Sistema Solar + BHI só com assemblies sem Godot
 
 Rotação/obliquidade, HUD de ensino e insolação matemática saíram deste backlog para
-M12 e M14; taxas seculares saíram para o M15, e asteroides e cometas para o M16. Janelas
-de transferência saem quando o M19 for concluído.
+M12 e M14; taxas seculares saíram para o M15, e asteroides e cometas para o M16. Roche e
+anéis saíram para o M17; Yarkovsky saiu para o M18; Lambert e impulso saíram para o M19.
 
 ---
 

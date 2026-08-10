@@ -56,9 +56,17 @@ public sealed record CelestialBodyData
     /// Taxas seculares declaradas no arquivo, que descrevem o que o motor não modela.
     /// Relatividade e achatamento não entram aqui: são calculados em
     /// <see cref="Core.SecularPerturbations"/>, e declarar de novo seria contá-los duas
-    /// vezes.
+    /// vezes. Yarkovsky e pressão de radiação também não: vão em
+    /// <see cref="NonGravitational"/> e viram taxa em
+    /// <see cref="Core.NonGravitationalDrift"/>.
     /// </summary>
     public OrbitalElementRates Rates { get; init; }
+
+    /// <summary>
+    /// Parâmetros não gravitacionais. Ausentes na maioria dos corpos — planetas e luas
+    /// não os têm —, e só quem os declara ganha drift do semi-eixo.
+    /// </summary>
+    public NonGravitationalParameters NonGravitational { get; init; }
 
     /// <summary>Cor em 0xRRGGBB. Guardada como inteiro para não depender do Godot.</summary>
     public uint ColorRgb { get; init; } = 0xFFFFFF;

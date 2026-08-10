@@ -447,7 +447,8 @@ public sealed class SimEngine
 
     /// <summary>
     /// A taxa declarada no arquivo somada à que a física impõe: precessão relativística
-    /// do periápside e efeito do achatamento do pai.
+    /// do periápside, efeito do achatamento do pai, e — quando o arquivo declara
+    /// parâmetros — Yarkovsky e pressão de radiação.
     /// </summary>
     /// <remarks>
     /// Corpo dinâmico não entra: a órbita dele é o arco vigente, obtido de um vetor de
@@ -467,7 +468,8 @@ public sealed class SimEngine
 
         return body.Rates
             + SecularPerturbations.For(
-                elements, _mu[index], parent.J2, parent.J2ReferenceRadiusKm);
+                elements, _mu[index], parent.J2, parent.J2ReferenceRadiusKm)
+            + NonGravitationalDrift.For(elements, _mu[index], body.NonGravitational);
     }
 
     /// <summary>
@@ -701,6 +703,45 @@ public sealed class SimEngine
 
         _trajectories[bodyId].Append(arc);
         Adopt(bodyId, arc);
+    }
+
+    /// <summary>
+    /// Aplica um impulso instantâneo a um corpo dinâmico: a posição fica, a velocidade
+    /// salta, e o arco vigente é emendado por outro com os elementos novos. É o que
+    /// transforma um preview de transferência em trajetória.
+    /// </summary>
+    /// <param name="deltaVKmS">
+    /// Incremento de velocidade no referencial do pai atual, em km/s.
+    /// </param>
+    public void ApplyImpulse(string bodyId, in Vector3D deltaVKmS, double julianDate)
+    {
+        if (!_trajectories.ContainsKey(bodyId))
+        {
+            throw new SystemDataException(
+                $"Corpo '{bodyId}': impulso só se aplica a corpo dinâmico. Solte uma "
+                    + "sonda antes.");
+        }
+
+        var index = _hierarchy.IndexOf(bodyId);
+        var body = _hierarchy[index];
+        var daysSinceEpoch = julianDate - AstroConstants.J2000;
+        var parentId = _trajectories[bodyId].At(julianDate).ParentId;
+
+        var local = LocalStateOf(index, daysSinceEpoch);
+        var after = new StateVector(
+            local.PositionKm,
+            local.VelocityKmS + deltaVKmS);
+
+        var elements = OrbitDetermination.ElementsFrom(
+            after, EffectiveMu(parentId, body.MuKm3S2), daysSinceEpoch);
+
+        var arc = new TrajectoryArc(julianDate, parentId, elements);
+
+        _trajectories[bodyId].Append(arc);
+        Adopt(bodyId, arc);
+
+        StructureChanged?.Invoke();
+        Publish();
     }
 
     /// <summary>

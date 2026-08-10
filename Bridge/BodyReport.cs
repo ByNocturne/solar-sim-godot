@@ -60,6 +60,12 @@ public readonly record struct BodyReport
     public double ApsidalPrecessionRadPerSecond { get; init; }
 
     /// <summary>
+    /// Quanto o semi-eixo maior anda por segundo: Yarkovsky e pressão de radiação, quando
+    /// o arquivo declara parâmetros. Zero para planetas e para quem não tem drift.
+    /// </summary>
+    public double SemiMajorAxisKmPerSecond { get; init; }
+
+    /// <summary>
     /// Período orbital. Infinito quando a órbita é aberta, porque não há volta a
     /// completar.
     /// </summary>
@@ -143,6 +149,7 @@ public readonly record struct BodyReport
         }
 
         var mu = sim.GravitationalParameterOf(bodyId);
+        var rates = sim.SecularRatesOf(bodyId);
 
         // Deslocamento zero: os elementos consultados já se referem a esta data.
         var trueAnomaly = KeplerPropagator.TrueAnomalyAt(elements, mu, 0.0);
@@ -150,8 +157,8 @@ public readonly record struct BodyReport
         return report with
         {
             Elements = elements,
-            ApsidalPrecessionRadPerSecond =
-                sim.SecularRatesOf(bodyId).ArgumentOfPeriapsisRadPerSecond,
+            ApsidalPrecessionRadPerSecond = rates.ArgumentOfPeriapsisRadPerSecond,
+            SemiMajorAxisKmPerSecond = rates.SemiMajorAxisKmPerSecond,
             PeriodDays = elements.IsClosed
                 ? KeplerPropagator.OrbitalPeriodDays(elements.SemiMajorAxisKm, mu)
                 : double.PositiveInfinity,

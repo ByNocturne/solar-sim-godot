@@ -19,6 +19,17 @@ public static class AstroConstants
 
     public const double SecondsPerJulianCentury = DaysPerJulianCentury * SecondsPerDay;
 
+    /// <summary>
+    /// Dias em um ano juliano. É a unidade em que a literatura publica drifts seculares
+    /// de corpos menores (UA por milhão de anos), e por isso a conversão do Yarkovsky.
+    /// </summary>
+    public const double DaysPerJulianYear = 365.25;
+
+    public const double SecondsPerJulianYear = DaysPerJulianYear * SecondsPerDay;
+
+    /// <summary>Anos em um milhão de anos — a unidade do <c>da/dt</c> do Yarkovsky.</summary>
+    public const double YearsPerMillion = 1_000_000.0;
+
     public const double TwoPi = Math.PI * 2.0;
 
     /// <summary>Segundos de arco em uma volta completa.</summary>

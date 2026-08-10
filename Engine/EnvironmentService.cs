@@ -143,7 +143,8 @@ public sealed class EnvironmentService
             tidalWatts,
             zones.PolarIce,
             sim.TidesOn(bodyId, jd).Fate,
-            sim.RingZoneOf(bodyId).IsPlausible);
+            sim.RingZoneOf(bodyId).IsPlausible,
+            body.NonGravitational.HasYarkovsky);
 
         var report = new EnvironmentReport
         {
@@ -308,7 +309,8 @@ public sealed class EnvironmentService
         double tidalWatts,
         bool polarIce,
         SatelliteFate fate,
-        bool ringsPlausible)
+        bool ringsPlausible,
+        bool hasYarkovsky)
     {
         var flags = new List<string>();
 
@@ -394,6 +396,11 @@ public sealed class EnvironmentService
         if (ringsPlausible)
         {
             flags.Add("ring_zone");
+        }
+
+        if (hasYarkovsky)
+        {
+            flags.Add("yarkovsky_drift");
         }
 
         if (o2ch4)

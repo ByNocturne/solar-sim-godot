@@ -44,6 +44,14 @@ public sealed record CatalogBody
 
     public required uint ColorRgb { get; init; }
 
+    /// <summary>
+    /// Drift Yarkovsky documentado, em UA/Myr. Só quem teve o efeito medido o traz.
+    /// </summary>
+    public double? YarkovskyDaAuPerMyr { get; init; }
+
+    /// <summary>Coeficiente β de pressão de radiação, quando há.</summary>
+    public double? RadiationPressureBeta { get; init; }
+
     public string? Note { get; init; }
 }
 
@@ -75,6 +83,8 @@ public static class CatalogSource
         "radiusKm",
         "muKm3S2",
         "densityGCm3",
+        "yarkovskyDaAuPerMyr",
+        "radiationPressureBeta",
         "note",
     ];
 
@@ -266,6 +276,8 @@ public static class CatalogSource
             MuKm3S2 = mu,
             DensityGCm3 = density,
             ColorRgb = Palette.Parse(Optional("colorRgb"), kind, lineNumber),
+            YarkovskyDaAuPerMyr = OptionalNumber("yarkovskyDaAuPerMyr"),
+            RadiationPressureBeta = OptionalNumber("radiationPressureBeta"),
             Note = Optional("note"),
         };
     }

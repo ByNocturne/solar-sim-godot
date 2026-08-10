@@ -70,6 +70,15 @@ public sealed class DisplayFormatTests
         Assert.Equal("1 volta / 4,00 anos", DisplayFormat.PrecessionRate(umaVoltaEmQuatroAnos));
     }
 
+    [Fact]
+    public void SemiMajorAxisDrift_usa_ua_por_milhao_de_anos()
+    {
+        var kmPorSegundo = NonGravitationalDrift.SemiMajorAxisKmPerSecondFromYarkovsky(-0.0019);
+
+        Assert.Equal("-0,0019 UA/Myr", DisplayFormat.SemiMajorAxisDrift(kmPorSegundo));
+        Assert.Equal(DisplayFormat.Absent, DisplayFormat.SemiMajorAxisDrift(0.0));
+    }
+
     /// <summary>
     /// Precessão retrógrada é a mesma volta ao contrário, e o sinal fica no número de
     /// voltas: um tempo negativo não existe.

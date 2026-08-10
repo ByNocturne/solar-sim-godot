@@ -55,6 +55,7 @@ public partial class InspectorPanel : CanvasLayer
         AscendingNode,
         ArgumentOfPeriapsis,
         ApsidalPrecession,
+        SemiMajorAxisDrift,
         MeanAnomaly,
         TrueAnomaly,
         Periapsis,
@@ -98,6 +99,8 @@ public partial class InspectorPanel : CanvasLayer
             "Argumento do periápside (ω): ângulo do nó ascendente até o ponto mais próximo do foco. Mostrado na data atual, já com a precessão.",
         [Row.ApsidalPrecession] =
             "Quanto o periápside gira por século: relatividade geral mais achatamento do corpo pai. Em Mercúrio são os 43″/século que a gravitação newtoniana não explicava.",
+        [Row.SemiMajorAxisDrift] =
+            "Quanto o semi-eixo maior anda por milhão de anos: efeito Yarkovsky (radiação térmica de um corpo que gira) e, quando declarado, pressão de radiação. Em Bennu são −0,0019 UA/Myr.",
         [Row.MeanAnomaly] =
             "Anomalia média na data atual: posição angular que o corpo teria se a órbita fosse percorrida a velocidade constante.",
         [Row.TrueAnomaly] =
@@ -302,6 +305,12 @@ public partial class InspectorPanel : CanvasLayer
             Row.ApsidalPrecession,
             "Precessão do periáps.",
             DisplayFormat.PrecessionRate(report.ApsidalPrecessionRadPerSecond));
+
+        Show(Row.SemiMajorAxisDrift, report.SemiMajorAxisKmPerSecond != 0.0);
+        Set(
+            Row.SemiMajorAxisDrift,
+            "Drift do semi-eixo",
+            DisplayFormat.SemiMajorAxisDrift(report.SemiMajorAxisKmPerSecond));
 
         Set(
             Row.MeanAnomaly,

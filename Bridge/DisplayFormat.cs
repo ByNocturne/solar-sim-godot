@@ -121,6 +121,25 @@ public static class DisplayFormat
         return turns + Duration(turnDays);
     }
 
+    /// <summary>
+    /// Drift secular do semi-eixo maior. A unidade é a da literatura do Yarkovsky —
+    /// UA por milhão de anos —, porque em km/s o número de Bennu seria −9×10⁻⁹.
+    /// </summary>
+    public static string SemiMajorAxisDrift(double kmPerSecond)
+    {
+        if (kmPerSecond == 0.0 || !double.IsFinite(kmPerSecond))
+        {
+            return Absent;
+        }
+
+        var auPerMyr = kmPerSecond
+            * AstroConstants.YearsPerMillion
+            * AstroConstants.SecondsPerJulianYear
+            / AstroConstants.AstronomicalUnitKm;
+
+        return Format(auPerMyr, "N4", " UA/Myr");
+    }
+
     /// <summary>Grandeza adimensional, como a excentricidade.</summary>
     public static string Ratio(double value) => Format(value, "N4");
 

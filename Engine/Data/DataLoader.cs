@@ -176,7 +176,68 @@ public static class DataLoader
             ColorRgb = ParseColor(dto.ColorRgb, id),
             Elements = elements,
             Rates = ToRates(dto.Orbit?.Rates, elements, id),
+            NonGravitational = ToNonGravitational(dto.NonGravitational, elements, id),
         };
+    }
+
+    /// <summary>
+    /// Parâmetros não gravitacionais. Só fazem sentido na órbita fechada, pela mesma
+    /// razão das taxas: na aberta o corpo passa uma vez e um drift por milhão de anos
+    /// não descreve nada.
+    /// </summary>
+    private static NonGravitationalParameters ToNonGravitational(
+        NonGravitationalDto? dto,
+        OrbitalElements? elements,
+        string id)
+    {
+        if (dto is null)
+        {
+            return NonGravitationalParameters.None;
+        }
+
+        var yarkovsky = OptionalNullableFinite(
+            dto.YarkovskyDaAuPerMyr, id, "nonGravitational.yarkovskyDaAuPerMyr");
+        var beta = OptionalNullableFinite(
+            dto.RadiationPressureBeta, id, "nonGravitational.radiationPressureBeta");
+
+        if (yarkovsky is null && beta is null)
+        {
+            return NonGravitationalParameters.None;
+        }
+
+        if (elements is not { IsClosed: true })
+        {
+            throw new SystemDataException(
+                $"Corpo '{id}': 'nonGravitational' só vale para órbita fechada.");
+        }
+
+        if (beta is { } value && value < 0.0)
+        {
+            throw new SystemDataException(
+                $"Corpo '{id}': 'nonGravitational.radiationPressureBeta' não pode ser "
+                    + "negativo. β é a razão entre a força de radiação e a gravidade.");
+        }
+
+        return new NonGravitationalParameters(yarkovsky, beta);
+    }
+
+    /// <summary>
+    /// Campo opcional que, se vier, precisa ser número finito. Ausente continua ausente —
+    /// diferente de <see cref="OptionalFinite"/>, que trata ausência como zero.
+    /// </summary>
+    private static double? OptionalNullableFinite(double? value, string id, string field)
+    {
+        if (value is not { } number)
+        {
+            return null;
+        }
+
+        if (!double.IsFinite(number))
+        {
+            throw new SystemDataException($"Corpo '{id}': o campo '{field}' não é um número.");
+        }
+
+        return number;
     }
 
     /// <summary>
@@ -546,6 +607,29 @@ public static class DataLoader
 
         [JsonPropertyName("orbit")]
         public OrbitDto? Orbit { get; init; }
+
+        [JsonPropertyName("nonGravitational")]
+        public NonGravitationalDto? NonGravitational { get; init; }
+    }
+
+    private sealed record NonGravitationalDto
+    {
+        /// <summary>
+        /// Drift secular do semi-eixo por Yarkovsky, em UA por milhão de anos. Negativo
+        /// para rotação retrógrada — o caso de Bennu.
+        /// </summary>
+        [JsonPropertyName("yarkovskyDaAuPerMyr")]
+        public double? YarkovskyDaAuPerMyr { get; init; }
+
+        /// <summary>
+        /// Coeficiente β de pressão de radiação: razão entre a força de radiação e a
+        /// gravidade do atrator. Alimenta o drift Poynting–Robertson.
+        /// </summary>
+        [JsonPropertyName("radiationPressureBeta")]
+        public double? RadiationPressureBeta { get; init; }
+
+        [JsonPropertyName("note")]
+        public string? Note { get; init; }
     }
 
     private sealed record OrbitDto

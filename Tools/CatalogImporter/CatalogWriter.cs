@@ -104,6 +104,24 @@ public static class CatalogWriter
             fields.Add($"      \"note\": {Quote(note)}");
         }
 
+        if (body.YarkovskyDaAuPerMyr is { } || body.RadiationPressureBeta is { })
+        {
+            var ng = new List<string>();
+
+            if (body.YarkovskyDaAuPerMyr is { } da)
+            {
+                ng.Add($"        \"yarkovskyDaAuPerMyr\": {Number(da)}");
+            }
+
+            if (body.RadiationPressureBeta is { } beta)
+            {
+                ng.Add($"        \"radiationPressureBeta\": {Number(beta)}");
+            }
+
+            fields.Add(
+                "      \"nonGravitational\": {\n" + string.Join(",\n", ng) + "\n      }");
+        }
+
         var orbit = new[]
         {
             $"        \"semiMajorAxisAu\": {Number(body.SemiMajorAxisAu)}",

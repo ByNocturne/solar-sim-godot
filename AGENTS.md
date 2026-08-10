@@ -22,9 +22,11 @@ que andam com o tempo, com precessão por relatividade geral e pelo achatamento 
 pai — o periélio de Mercúrio avança os 43″/século conhecidos —, e o M16 acrescentou 28
 corpos menores de `Data/minor_bodies_j2000.json`, com filtros por classe na árvore e um
 importador offline que gera o arquivo. O M17 acrescentou o limite de Roche, o destino de
-cada satélite sob a maré do pai e uma heurística de anéis. Faltam M18 e M19: Yarkovsky e
-Lambert/Δv. Ideias maiores (“O simulador”, N-corpos híbrido) ficam no backlog sem fase —
-ver [ROADMAP.md](ROADMAP.md).
+cada satélite sob a maré do pai e uma heurística de anéis. O M18 acrescentou drift
+secular do semi-eixo por Yarkovsky (Bennu a −0,0019 UA/Myr) e pressão de radiação via
+Poynting–Robertson. O M19 fechou a Fase 3: Lambert, janelas de Δv e impulso que emenda
+arco na sonda. Ideias maiores (“O simulador”, N-corpos híbrido) ficam no backlog sem
+fase — ver [ROADMAP.md](ROADMAP.md).
 
 Para ver rodando: abra o projeto no Godot e pressione F5, ou `godot --path .`. Espaço pausa, setas ajustam a velocidade, R volta
 para J2000, Tab e Shift+Tab ancoram a câmera no corpo seguinte e no anterior, um clique
@@ -32,7 +34,8 @@ ancora no corpo apontado, L alterna entre escala logarítmica e linear, N mostra
 os nomes, Home devolve a vista inicial, H mostra a lista de atalhos, I abre o ensino
 ambiental, a roda dá zoom, o botão direito gira a câmera e o do meio — ou Shift com o
 direito — arrasta. P e Shift+P soltam uma sonda em órbita ou em fuga do corpo ancorado,
-Delete descarta a sonda ancorada, F5 salva e F9 carrega.
+T mostra o Δv Terra→Marte na data atual e Shift+T aplica a partida na sonda heliocêntrica
+ancorada, Delete descarta a sonda ancorada, F5 salva e F9 carrega.
 
 ## Como construir
 
@@ -180,6 +183,26 @@ já que a Terra é densa; o que falta à Terra é gelo, não espaço. As condiç
 faixa acima da superfície, estar além da linha de gelo (2,7 UA, pelo semi-eixo maior) e
 orbitar a estrela. A última é limite de escopo declarado: a vizinhança de uma lua é
 governada pela maré do planeta, e um modelo de dois corpos não tem o que dizer sobre ela.
+
+## Yarkovsky e pressão de radiação
+
+O drift do semi-eixo por Yarkovsky não é inventado pelo motor: quem teve o efeito medido
+declara `nonGravitational.yarkovskyDaAuPerMyr` no JSON (no catálogo, a coluna do CSV).
+Bennu traz −0,0019 UA/Myr. O motor converte para taxa secular e soma ao mesmo caminho que
+a relatividade e o J₂ já usam — `f(JD)`, sem força por quadro. Planetas e o resto do
+catálogo, sem o bloco, não andam o semi-eixo.
+
+Pressão de radiação é o coeficiente β opcional no mesmo bloco; vira drift
+Poynting–Robertson de `a` e `e`. Para asteróides típicos é desprezível diante do
+Yarkovsky.
+
+## Transferências Lambert e impulso
+
+`TransferPlanner.Preview` / `ScanWindows` e a fachada `SimBridge.PreviewTransfer` /
+`ScanTransferWindows` só consultam: duas posições, um tempo de voo, Δv de partida e de
+chegada. `SimEngine.ApplyImpulse` (e `ApplyTransferDeparture` na ponte) emenda um arco
+novo na sonda dinâmica — a mesma porta da emenda de cônicas. T mostra Terra→Marte na
+data atual; Shift+T aplica a partida se a sonda ancorada orbitar o Sol.
 
 ## Corpos que não vêm do arquivo
 
