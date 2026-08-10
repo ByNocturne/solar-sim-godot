@@ -133,11 +133,19 @@ public sealed class SimEngine
             return null;
         }
 
-        // Para um corpo dinâmico quem manda é o arco daquela data, que já é a órbita
-        // vigente e não tem taxa a aplicar.
+        // Para um corpo dinâmico quem manda é o arco daquela data. Os elementos do arco
+        // guardam a anomalia média referida a J2000 — a mesma convenção da conversão
+        // inversa —, então aqui ela é avançada até a data pedida. Sem isso o inspetor
+        // mostraria a anomalia de J2000 como se fosse a de agora.
         if (_trajectories.TryGetValue(body.Id, out var trajectory))
         {
-            return trajectory.At(julianDate).Elements;
+            var arc = trajectory.At(julianDate);
+            var daysSinceEpoch = julianDate - AstroConstants.J2000;
+            var mu = EffectiveMu(arc.ParentId, body.MuKm3S2);
+            var meanAnomalyNow = KeplerPropagator.MeanAnomalyAt(
+                arc.Elements, mu, daysSinceEpoch);
+
+            return arc.Elements with { MeanAnomalyAtEpochRad = meanAnomalyNow };
         }
 
         return SecularPropagator.ElementsAt(
@@ -620,12 +628,22 @@ public sealed class SimEngine
             }
 
             var atual = trajectory.Current.ParentId;
-            var dominante = DominantAttractor(
-                _hierarchy.IndexOf(bodyId), atual, julianDate);
 
-            if (dominante != atual)
+            // Em um único Advance a sonda pode atravessar mais de uma esfera (Lua →
+            // Terra → Sol). Sem o laço, cada quadro só sobe ou desce um nível, e com o
+            // tempo acelerado a captura intermediária some.
+            for (var hop = 0; hop < MaxAttractorHopsPerAdvance; hop++)
             {
+                var index = _hierarchy.IndexOf(bodyId);
+                var dominante = DominantAttractor(index, atual, julianDate);
+
+                if (dominante == atual)
+                {
+                    break;
+                }
+
                 Reparent(bodyId, dominante, julianDate);
+                atual = dominante;
                 trocou = true;
             }
         }
@@ -635,6 +653,12 @@ public sealed class SimEngine
             StructureChanged?.Invoke();
         }
     }
+
+    /// <summary>
+    /// Teto de trocas de atrator por corpo e por <see cref="Advance"/>. Cobre a cadeia
+    /// Lua→Terra→Sol com folga; um número maior esconderia um ciclo patológico.
+    /// </summary>
+    private const int MaxAttractorHopsPerAdvance = 8;
 
     /// <summary>
     /// Qual corpo domina a atração sobre este, agora: o pai de sempre, o avô — se o
@@ -734,6 +758,36 @@ public sealed class SimEngine
 
         var elements = OrbitDetermination.ElementsFrom(
             after, EffectiveMu(parentId, body.MuKm3S2), daysSinceEpoch);
+
+        var arc = new TrajectoryArc(julianDate, parentId, elements);
+
+        _trajectories[bodyId].Append(arc);
+        Adopt(bodyId, arc);
+
+        StructureChanged?.Invoke();
+        Publish();
+    }
+
+    /// <summary>
+    /// Substitui o estado local de um corpo dinâmico (posição e velocidade relativas ao
+    /// pai atual) e emenda um arco novo. Usado pela partida de transferência, que precisa
+    /// colocar a sonda fora da SOI de origem com a velocidade de Lambert.
+    /// </summary>
+    public void SetLocalState(string bodyId, in StateVector localState, double julianDate)
+    {
+        if (!_trajectories.ContainsKey(bodyId))
+        {
+            throw new SystemDataException(
+                $"Corpo '{bodyId}': só corpo dinâmico aceita estado imposto em runtime.");
+        }
+
+        var index = _hierarchy.IndexOf(bodyId);
+        var body = _hierarchy[index];
+        var daysSinceEpoch = julianDate - AstroConstants.J2000;
+        var parentId = _trajectories[bodyId].At(julianDate).ParentId;
+
+        var elements = OrbitDetermination.ElementsFrom(
+            localState, EffectiveMu(parentId, body.MuKm3S2), daysSinceEpoch);
 
         var arc = new TrajectoryArc(julianDate, parentId, elements);
 

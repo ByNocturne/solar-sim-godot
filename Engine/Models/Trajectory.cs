@@ -76,13 +76,15 @@ public sealed class Trajectory
     }
 
     /// <summary>
-    /// Descarta os arcos que começam depois de um instante. É o que acontece quando o
-    /// tempo anda para trás: a emenda que ainda não aconteceu deixa de existir, e será
-    /// redescoberta se o tempo voltar a passar por ali.
+    /// Descarta os arcos que começam <em>depois</em> de um instante. É o que acontece
+    /// quando o tempo anda para trás: a emenda que ainda não aconteceu deixa de existir.
+    /// A comparação é estrita (<c>&gt;</c>, não <c>&gt;=</c>): um impulso no mesmo JD
+    /// do arco anterior precisa sobreviver a um <c>Advance(0)</c> nesse instante — senão
+    /// a sonda volta ao estado pré-impulso e pode cair no centro de um planeta.
     /// </summary>
     public void RewindTo(double julianDate)
     {
-        while (_arcs.Count > 1 && _arcs[^1].StartJulianDate >= julianDate)
+        while (_arcs.Count > 1 && _arcs[^1].StartJulianDate > julianDate)
         {
             _arcs.RemoveAt(_arcs.Count - 1);
         }

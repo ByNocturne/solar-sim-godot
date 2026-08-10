@@ -1,0 +1,43 @@
+---
+description: UI e Render não guardam estado da simulação; Help/AGENTS/README sincronizados; Movie Maker para validação visual
+globs: UI/**/*.cs,Render/**/*.cs,Bridge/SimBridge.cs
+alwaysApply: false
+---
+
+# UI / Render
+
+## Sem estado da simulação
+
+Painéis só guardam rótulos e timers de UI. Todo valor exibido vem de
+`SimBridge.ReportFor` / `EnvironmentFor` / eventos de quadro e é descartado.
+
+```csharp
+// BAD
+private double _distanciaKm;
+
+// GOOD
+_valor.Text = DisplayFormat.Distance(bridge.ReportFor(id).DistanceToRootKm);
+```
+
+Dado novo no inspetor → método na fachada `SimBridge`, não referência ao `SimEngine`.
+
+## Números na tela
+
+Sempre por `DisplayFormat`. Unidades do domínio (km, s, rad) nunca aparecem cruas.
+
+## Atalhos e docs
+
+`TimeControls.HelpLines`, `AGENTS.md` e `README.md` descrevem os mesmos gestos. Ao
+mudar um, atualize os três. Em especial: botão direito **orbita**; meio / Shift+direito
+**arrasta**.
+
+## Estrutura dinâmica
+
+Corpo criado em runtime (sonda) precisa de mesh, órbita **e** rótulo.
+`BodyLabels` assina `StructureChanged` e sincroniza; não assuma a lista do `_Ready`.
+
+## Validação visual
+
+Mudança de painel/corte de rótulo: `dotnet build` e depois
+`./scripts/movie-smoke.ps1` (ou Movie Maker manual). `--headless --quit-after` não
+prova layout.

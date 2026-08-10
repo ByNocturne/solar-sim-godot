@@ -1,133 +1,52 @@
 # Solar Sim
 
-Simulador do Sistema Solar em Godot 4 com C#, usando a solução analítica de Kepler para o
-problema de dois corpos. A posição de qualquer corpo em qualquer instante é calculada
-diretamente a partir da data, sem integração numérica de forças.
+Simulador do Sistema Solar em Godot 4 (.NET) com propagação kepleriana analítica.
+Pensado como base para missões e transferências orbitais.
 
-O projeto é desenhado como base para trabalho futuro com missões e transferências
-orbitais, o que influencia decisões desde o início: unidades da astrodinâmica, vetores de
-estado como tipo de primeira classe e órbitas abertas.
+O detalhe operacional — controles, dados, invariantes, como construir e gravar
+quadros — está em [AGENTS.md](AGENTS.md). O plano por marcos está em
+[ROADMAP.md](ROADMAP.md).
 
 ## Estado
 
-**Os oito marcos, M0 a M7, estão concluídos.** O simulador carrega
-o Sistema Solar de um arquivo JSON — Sol, oito planetas, a Lua, as galileanas e Titã —
-propaga cada corpo em torno do seu e desenha as órbitas, com a câmera ancorável em
-qualquer corpo. O motor está validado contra as efemérides DE441 do JPL Horizons: erro
-máximo de 0,0132% na distância radial ao longo de 26 anos simulados. A interface tem
-árvore do sistema, barra de tempo com salto para uma data arbitrária e inspetor com os
-elementos orbitais do corpo ancorado. A apresentação é tridimensional, com projeção
-ortográfica: girar a câmera revela a inclinação das órbitas, que existe nos dados desde o
-começo.
-
-Com o M7 é possível soltar uma sonda a partir de um vetor de estado arbitrário e vê-la
-propagar junto com o resto — inclusive em trajetória hiperbólica, e trocando de corpo
-atrator ao atravessar uma esfera de influência. O que vem depois está no
-[ROADMAP.md](ROADMAP.md), no backlog.
-
-Controles: espaço pausa, setas ajustam a velocidade do tempo, R volta para J2000, Tab e
-Shift+Tab ancoram a câmera no corpo seguinte e no anterior, um clique ancora no corpo
-apontado, L alterna entre escala logarítmica e linear, N mostra ou esconde os nomes, Home
-devolve a vista inicial, H mostra a lista de atalhos, a roda dá zoom, o botão direito gira
-a câmera e o do meio — ou Shift com o direito — arrasta. P solta uma sonda em órbita do
-corpo ancorado e Shift+P a solta em fuga; Delete descarta a sonda ancorada; F5 salva e F9
-carrega.
+**M0 a M19 estão concluídos** (Fase 3 fechada). O motor carrega o Sistema Solar e o
+catálogo de corpos menores, propaga com taxas seculares (J₂ + GR), Yarkovsky onde
+declarado, e oferece Lambert + impulso em sondas. Erro radial dos planetas abaixo de
+0,02% contra DE441. Apresentação 3D ortográfica, com árvore, barra de tempo, inspetor e
+HUD de ensino (`I`).
 
 ## Setup
 
-1. Instalar o [.NET SDK](https://dotnet.microsoft.com/download) — versão 8.0 ou superior,
-   64 bits. A recomendação oficial do Godot é usar sempre o SDK estável mais recente.
-2. Instalar o [Godot 4.x](https://godotengine.org/download) na variante **.NET**. O build
-   padrão não roda C#.
-3. Verificar com `dotnet --info`.
+1. [.NET SDK](https://dotnet.microsoft.com/download) 8.0+ (recomendado: o estável mais recente).
+2. [Godot 4.x](https://godotengine.org/download) na variante **.NET** (`stable.mono`). O
+   build sem .NET falha com `No loader found for … SimBridge.cs` — parece corrupção de
+   cena, e não é.
+3. No Windows, o executável certo costuma não estar no PATH. Use
+   [`scripts/Resolve-Godot.ps1`](scripts/Resolve-Godot.ps1) ou defina `$env:GODOT`.
 
 ```bash
 dotnet build
-dotnet test     # os testes do motor rodam sem o Godot
+dotnet test     # motor e Bridge pura; Godot fechado basta
 ```
 
-Verificado com .NET SDK 10.0.302 e Godot 4.7.1. Os mesmos dois comandos rodam no GitHub
-Actions a cada push.
+Smoke visual (Movie Maker):
+
+```powershell
+./scripts/movie-smoke.ps1
+```
+
+## Controles (resumo)
+
+Espaço pausa · setas velocidade · R J2000 · Tab âncora · L escala · N nomes · Home vista
+· H ajuda · I ensino · P / Shift+P sonda · T / Shift+T Terra→Marte · Delete descarta ·
+F5 / F9 save/load · direito orbita · meio / Shift+direito arrasta · roda zoom.
 
 ## Arquitetura
 
-Três camadas, com dependências apontando apenas para dentro:
-
 ```
-UI/ e Render/   ->  assinam eventos, tratam input, desenham
-Bridge/         ->  converte precisão e escala; único ponto de contato com o motor
-Engine/         ->  matemática orbital e estado; não conhece o Godot
+UI/ e Render/  ->  assinam eventos e tratam input
+Bridge/        ->  precisão, escala, fachada SimBridge
+Engine/        ->  domínio puro; zero Godot
 ```
 
-`Engine/` é domínio puro: compila e é testado com o Godot desinstalado. Essa separação não
-é cerimônia — é o que permite validar a mecânica orbital contra efemérides reais sem abrir
-o editor, e o que mantém o motor reaproveitável se a camada visual mudar.
-
-`Bridge/SimBridge.cs` é o único nó do Godot que alcança o motor. Os painéis e os nós
-gráficos assinam o evento de snapshot ou chamam comandos e consultas dessa fachada, de
-modo que o número de pontos de contato entre os dois mundos é um. O que o inspetor mostra
-é um valor consultado ao motor e descartado logo depois, e não uma cópia mantida pela
-tela: assim não existe onde um número desatualizado possa sobreviver.
-
-## Precisão
-
-Distâncias no Sistema Solar chegam a 4,5 bilhões de quilômetros. Em ponto flutuante de
-precisão simples, isso trunca a mantissa e produz trepidação visual em corpos distantes da
-origem.
-
-O motor opera inteiramente em `double`. A conversão para `float` acontece em um único
-lugar, na camada Bridge, e somente após subtrair a posição da câmera — quando os números
-já são pequenos.
-
-## Escalas
-
-O Sistema Solar em proporção real é quase todo vazio: Netuno está 78 vezes mais longe do
-Sol que Mercúrio, então qualquer escala linear que caiba na tela empilha os planetas
-internos em um punhado de pixels. O modo logarítmico comprime o exterior por uma curva
-perceptual e devolve os planetas internos ao mapa; `L` alterna entre os dois, com
-transição suave.
-
-A escala é hierárquica: cada corpo tem o seu próprio mapa para os filhos, dimensionado
-pela maior órbita que abriga. Sem isso, a órbita da Lua — 390 vezes menor que a da Terra —
-sumiria dentro do disco do planeta. O raio desenhado dos corpos tem escala própria, sem
-relação com a das distâncias, porque em proporção real a Terra teria centésimos de pixel.
-
-Quanto espaço cada nível recebe é fração da altura da janela, e não uma contagem fixa de
-pixels: assim a mesma calibragem serve para qualquer resolução, em vez de deixar o sistema
-encolhido no meio de uma tela grande.
-
-## Cônicas emendadas
-
-Um corpo acrescentado em tempo de execução não tem uma órbita, e sim uma trajetória: uma
-lista de arcos, cada um com o instante em que começa, quem atraía o corpo e os elementos
-daquele trecho. Quando a sonda sai da esfera de influência do corpo pai, ou entra na de
-outro, o estado dela naquele instante é medido em relação ao novo atrator e vira o arco
-seguinte. Como os dois arcos saem do mesmo vetor de estado, a posição e a velocidade não
-dão salto: o que muda é quem é considerado responsável pela curva.
-
-Guardar os arcos, em vez de só a órbita de agora, é o que preserva o invariante 4 para
-esses corpos — consultar uma data anterior a uma emenda devolve o que valia naquela época,
-e o tempo reverso desfaz a emenda em vez de ignorá-la.
-
-Trajetórias com `e > 1` são suportadas; a parábola exata, não. Com `e` igual a 1 o
-semi-eixo maior é infinito e metade da formulação deixa de existir, e nenhuma trajetória
-real fica nesse valor. Pedir uma resulta em erro explícito, e não em `NaN` mais adiante.
-
-Salvar é gravar a Data Juliana e esses corpos, com a trajetória inteira. O Sistema Solar
-não entra no arquivo: o estado dele é função da data.
-
-## Unidades
-
-Quilômetros, segundos e radianos internamente, com o parâmetro gravitacional em km³/s²,
-que é a unidade em que o JPL publica valores de GM. O tempo de calendário é a Data
-Juliana, com época J2000.0 em 2451545.0.
-
-Graus e unidades astronômicas existem em um lugar só: `Data/solar_system_j2000.json`, onde
-a unidade está declarada no nome de cada campo e a conversão acontece na carga. Acrescentar
-um corpo é editar esse arquivo.
-
-## Documentos
-
-- [ROADMAP.md](ROADMAP.md) — os oito marcos e seus critérios de pronto
-- [AGENTS.md](AGENTS.md) — orientação rápida para agentes de código
-- `.cursor/rules/` — convenções detalhadas e armadilhas numéricas conhecidas
+Unidades internas: km, segundos, radianos. Estado = f(JD) (+ arcos das sondas).

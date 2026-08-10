@@ -158,6 +158,33 @@ public sealed class PatchedConicTests
         Assert.Equal("earth", sim.BodyOf("sonda").ParentId);
     }
 
+    /// <summary>
+    /// Um único Advance sobe Lua→Terra→Sol quando a sonda já está fora das duas esferas.
+    /// Sem o laço de hops, ficaria um quadro presa na Terra.
+    /// </summary>
+    [Fact]
+    public void UmAdvanceSobeDoisNiveisDeEsfera()
+    {
+        var sim = SolarSystem.NewEngine();
+        var jd = sim.Time.JulianDate;
+        var earth = sim.StateAt("earth", jd);
+        var moon = sim.StateAt("moon", jd);
+
+        // Longe da Terra e da Lua, com velocidade relativa não nula — senão a emenda
+        // para a Terra vira queda radial e o motor recusa a parábola.
+        var probeGlobal = new StateVector(
+            earth.PositionKm + new Vector3D(2_000_000.0, 0.0, 0.0),
+            earth.VelocityKmS + new Vector3D(0.0, 0.5, 0.0));
+
+        sim.AddFromState(Sonda("moon"), probeGlobal - moon, jd);
+        Assert.Equal("moon", sim.BodyOf("sonda").ParentId);
+
+        sim.Advance(0.0);
+
+        Assert.Equal("sun", sim.BodyOf("sonda").ParentId);
+        Assert.True(sim.TrajectoryOf("sonda").Count >= 2);
+    }
+
     [Fact]
     public void ConsultarUmaDataAnteriorAEmendaUsaOArcoDaquelaEpoca()
     {

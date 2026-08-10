@@ -29,7 +29,10 @@ public partial class TimeControls : CanvasLayer
         "L: alterna escala logarítmica e linear",
         "N: mostra ou esconde os nomes",
         "Home: devolve a vista inicial",
-        "Roda: zoom     Botão direito: arrasta",
+        "Roda: zoom",
+        "Botão direito: orbita a câmera",
+        "Botão do meio / Shift+direito: arrasta",
+        "Home: devolve a vista inicial (solta a âncora)",
         "P / Shift+P: solta uma sonda em órbita ou em fuga",
         "T: preview Δv Terra→Marte    Shift+T: aplica partida na sonda",
         "Delete: descarta a sonda ancorada",
@@ -101,7 +104,7 @@ public partial class TimeControls : CanvasLayer
         var scale = _bridge.ScaleMap.Mode == ScaleMode.Logarithmic ? "logarítmica" : "linear";
 
         _view.Text = $"Escala {scale}     Âncora: {_bridge.AnchorName}"
-            + $"     {Godot.Engine.GetFramesPerSecond()} fps     H: ajuda";
+            + $"     {Godot.Engine.GetFramesPerSecond()} fps     H: ajuda     I: ensino";
 
         if (_noticeSeconds > 0.0)
         {
@@ -272,6 +275,11 @@ public partial class TimeControls : CanvasLayer
         row.AddChild(Panels.Command("Descartar", DiscardProbe));
 
         row.AddChild(new VSeparator());
+        row.AddChild(Panels.Caption("Terra→Marte"));
+        row.AddChild(Panels.Command("Δv", PreviewEarthMars));
+        row.AddChild(Panels.Command("Partida", ApplyEarthMarsDeparture));
+
+        row.AddChild(new VSeparator());
         row.AddChild(Panels.Command("Salvar", Save));
         row.AddChild(Panels.Command("Carregar", Load));
 
@@ -334,7 +342,7 @@ public partial class TimeControls : CanvasLayer
         }
 
         Notify(
-            $"Terra→Marte em {DisplayFormat.Duration(preview.TimeOfFlightDays)}: "
+            $"Terra→Marte (ToF fixo {DisplayFormat.Duration(preview.TimeOfFlightDays)}): "
                 + $"Δv {DisplayFormat.Speed(preview.TotalDeltaVKmS)} "
                 + $"(partida {DisplayFormat.Speed(preview.DepartureDeltaVKmS)}, "
                 + $"chegada {DisplayFormat.Speed(preview.ArrivalDeltaVKmS)}).");
@@ -356,9 +364,8 @@ public partial class TimeControls : CanvasLayer
             return;
         }
 
-        Notify(_bridge.ApplyTransferDeparture(preview)
-            ? $"Impulso de partida aplicado: {DisplayFormat.Speed(preview.DepartureDeltaVKmS)}."
-            : "Ancore uma sonda que orbite o Sol para aplicar a partida.");
+        var result = _bridge.ApplyTransferDeparture(preview);
+        Notify(result.Message);
     }
 
     private void Save()
@@ -393,7 +400,7 @@ public partial class TimeControls : CanvasLayer
     private void BuildHelp()
     {
         _help = Panels.Box();
-        Panels.AnchorCenter(_help, 420.0f, 360.0f);
+        Panels.AnchorCenter(_help, 440.0f, 420.0f);
         _help.Visible = false;
         AddChild(_help);
 

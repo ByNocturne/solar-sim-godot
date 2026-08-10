@@ -371,30 +371,47 @@ public partial class SimBridge : Node3D
     }
 
     /// <summary>
-    /// Aplica o Δv de partida de um preview à sonda ancorada, se ela orbitar o mesmo
-    /// corpo central da transferência. A posição fica; a velocidade passa a ser a da
-    /// solução de Lambert.
+    /// Aplica a partida de um preview: coloca a sonda logo fora da SOI do originário,
+    /// com a velocidade heliocêntrica de Lambert, e emenda o arco. Assim o próximo
+    /// <c>Advance</c> não tenta reatribuí-la ao planeta nem cai em estado degenerado.
     /// </summary>
-    public bool ApplyTransferDeparture(in TransferPreview preview)
+    public TransferApplyResult ApplyTransferDeparture(in TransferPreview preview)
     {
         if (_rig.AnchorBodyId is not { } bodyId || !_sim.IsDynamic(bodyId))
         {
-            return false;
+            return TransferApplyResult.Failed(
+                "Ancore uma sonda para aplicar a partida.");
         }
 
         var body = _sim.BodyOf(bodyId);
 
         if (body.ParentId != preview.CentralBodyId)
         {
-            return false;
+            return TransferApplyResult.Failed(
+                "A sonda precisa orbitar o Sol (saia da SOI do planeta com Shift+P).");
         }
 
-        var current = _sim.LocalStateAt(bodyId, _sim.Time.JulianDate);
-        var deltaV = preview.DepartureVelocityKmS - current.VelocityKmS;
+        var jd = _sim.Time.JulianDate;
+        var origin = _sim.StateAt(preview.OriginBodyId, jd)
+            - _sim.StateAt(preview.CentralBodyId, jd);
 
-        _sim.ApplyImpulse(bodyId, deltaV, _sim.Time.JulianDate);
+        var soi = _sim.SphereOfInfluenceKm(preview.OriginBodyId);
+        var clearanceKm = Math.Max(
+            soi * 1.2,
+            Math.Max(_sim.BodyOf(preview.OriginBodyId).RadiusKm * 10.0, 1_000.0));
 
-        return true;
+        // Afastamento ao longo do raio heliocêntrico do originário: |r − r_origem| fica
+        // bem acima da SOI, sem depender do sinal do Δv (que às vezes aponta para dentro).
+        var outward = origin.PositionKm.Normalized();
+        var state = new StateVector(
+            origin.PositionKm + outward * clearanceKm,
+            preview.DepartureVelocityKmS);
+
+        _sim.SetLocalState(bodyId, state, jd);
+
+        return TransferApplyResult.Applied(
+            $"Partida aplicada: Δv {DisplayFormat.Speed(preview.DepartureDeltaVKmS)}, "
+                + $"fora da SOI de {_sim.BodyOf(preview.OriginBodyId).Name}.");
     }
 
     /// <summary>

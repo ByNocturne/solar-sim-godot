@@ -1,3 +1,4 @@
+using SolarSim.Bridge;
 using SolarSim.Engine;
 using SolarSim.Engine.Core;
 using SolarSim.Engine.Data;
@@ -250,13 +251,95 @@ public sealed class LambertTransferTests
     }
 
     [Fact]
+    public void AnomaliaDeSondaLongeDeJ2000AcompanhaAPosicao()
+    {
+        var sim = SolarSystem.NewEngine();
+        var jd = AstroConstants.J2000;
+        var terra = sim.StateAt("earth", jd) - sim.StateAt("sun", jd);
+
+        sim.AddFromState(
+            new CelestialBodyData
+            {
+                Id = "sonda",
+                Name = "Sonda",
+                ParentId = "sun",
+                Kind = BodyKind.Spacecraft,
+                MuKm3S2 = 0.0,
+                RadiusKm = 0.0,
+            },
+            terra,
+            jd);
+
+        var depois = jd + 80.0;
+        var relatorio = BodyReport.For(sim, "sonda", depois);
+        var elementos = relatorio.Elements!.Value;
+        var mu = sim.GravitationalParameterOf("sonda");
+        var local = sim.LocalStateAt("sonda", depois);
+
+        var raioDaConica = elementos.SemiLatusRectumKm
+            / (1.0 + (elementos.Eccentricity * Math.Cos(relatorio.TrueAnomalyRad)));
+
+        Assert.Equal(local.PositionKm.Magnitude, raioDaConica, tolerance: 1.0);
+        Assert.Equal(
+            KeplerPropagator.TrueAnomalyAt(elementos, mu, 0.0),
+            relatorio.TrueAnomalyRad,
+            tolerance: 1e-9);
+    }
+
+    [Fact]
+    public void PartidaDeTransferenciaFicaForaDaSoiESobreviveAoAdvance()
+    {
+        var sim = SolarSystem.NewEngine();
+        var samples = TransferPlanner.ScanWindows(
+            sim, "earth", "mars",
+            AstroConstants.J2000, AstroConstants.J2000 + 800.0, 20.0,
+            150.0, 320.0, 20.0);
+        var preview = TransferPlanner.BestPreview(
+            sim, "earth", "mars",
+            samples[0].DepartureJulianDate, samples[0].TimeOfFlightDays)!;
+
+        var jd = preview.Value.DepartureJulianDate;
+        sim.Time.JumpTo(jd);
+
+        var terra = sim.StateAt("earth", jd) - sim.StateAt("sun", jd);
+        sim.AddFromState(
+            new CelestialBodyData
+            {
+                Id = "sonda",
+                Name = "Sonda",
+                ParentId = "sun",
+                Kind = BodyKind.Spacecraft,
+                MuKm3S2 = 0.0,
+                RadiusKm = 0.0,
+            },
+            terra,
+            jd);
+
+        var origin = sim.StateAt("earth", jd) - sim.StateAt("sun", jd);
+        var clearance = sim.SphereOfInfluenceKm("earth") * 1.2;
+        // Afastamento radial heliocêntrico: garante |r − r_Terra| = clearance > SOI,
+        // independentemente da geometria do Δv de partida.
+        var state = new StateVector(
+            origin.PositionKm + origin.PositionKm.Normalized() * clearance,
+            preview.Value.DepartureVelocityKmS);
+
+        sim.SetLocalState("sonda", state, jd);
+
+        var distanciaAntes = (sim.StateAt("sonda", jd).PositionKm
+            - sim.StateAt("earth", jd).PositionKm).Magnitude;
+        Assert.True(distanciaAntes > sim.SphereOfInfluenceKm("earth"));
+
+        sim.Advance(0.0);
+
+        Assert.Equal("sun", sim.BodyOf("sonda").ParentId);
+    }
+
+    [Fact]
     public void TempoReversoDesfazOImpulso()
     {
         var sim = SolarSystem.NewEngine();
         var jd = AstroConstants.J2000;
 
-        // Longe de qualquer planeta, para o Advance ao voltar no tempo não tentar
-        // reatribuir a sonda a uma esfera de influência.
         var estado = new StateVector(
             new Vector3D(3.0 * AstroConstants.AstronomicalUnitKm, 0.0, 0.0),
             new Vector3D(0.0, 15.0, 0.0));

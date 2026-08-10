@@ -38,9 +38,45 @@ public partial class BodyLabels : CanvasLayer
     public void Attach(SimBridge bridge)
     {
         _bridge = bridge;
+        SyncBodies();
+        bridge.FrameReady += OnFrameReady;
+        bridge.StructureChanged += SyncBodies;
+    }
+
+    /// <summary>
+    /// Reconstrói a lista de rótulos a partir dos corpos atuais. Sem isso, uma sonda
+    /// solta em runtime ganharia mesh e órbita, mas nunca nome na tela.
+    /// </summary>
+    public void SyncBodies()
+    {
+        if (_bridge is not { } bridge)
+        {
+            return;
+        }
+
+        var wanted = bridge.Bodies
+            .ToDictionary(body => body.Id, body => body, StringComparer.Ordinal);
+
+        for (var index = _entries.Count - 1; index >= 0; index--)
+        {
+            if (wanted.ContainsKey(_entries[index].BodyId))
+            {
+                continue;
+            }
+
+            _entries[index].Label.QueueFree();
+            _entries.RemoveAt(index);
+        }
+
+        var present = _entries.Select(entry => entry.BodyId).ToHashSet(StringComparer.Ordinal);
 
         foreach (var body in bridge.Bodies)
         {
+            if (present.Contains(body.Id))
+            {
+                continue;
+            }
+
             var label = new Label
             {
                 Text = body.Name,
@@ -49,9 +85,6 @@ public partial class BodyLabels : CanvasLayer
 
             label.AddThemeFontSizeOverride("font_size", FontSize);
             label.AddThemeColorOverride("font_color", BodyPalette.Of(body.ColorRgb));
-
-            // Contorno preto: sem ele o texto some quando passa por cima de uma órbita
-            // ou de outro corpo.
             label.AddThemeColorOverride("font_outline_color", new Color(0.0f, 0.0f, 0.0f));
             label.AddThemeConstantOverride("outline_size", 4);
 
@@ -62,8 +95,6 @@ public partial class BodyLabels : CanvasLayer
                 label,
                 (float)bridge.ScaleMap.BodyRadiusPixels(body.RadiusKm)));
         }
-
-        bridge.FrameReady += OnFrameReady;
     }
 
     public override void _ExitTree()
@@ -71,6 +102,7 @@ public partial class BodyLabels : CanvasLayer
         if (_bridge is not null)
         {
             _bridge.FrameReady -= OnFrameReady;
+            _bridge.StructureChanged -= SyncBodies;
             _bridge = null;
         }
     }

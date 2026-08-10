@@ -28,14 +28,16 @@ Poynting–Robertson. O M19 fechou a Fase 3: Lambert, janelas de Δv e impulso q
 arco na sonda. Ideias maiores (“O simulador”, N-corpos híbrido) ficam no backlog sem
 fase — ver [ROADMAP.md](ROADMAP.md).
 
-Para ver rodando: abra o projeto no Godot e pressione F5, ou `godot --path .`. Espaço pausa, setas ajustam a velocidade, R volta
-para J2000, Tab e Shift+Tab ancoram a câmera no corpo seguinte e no anterior, um clique
-ancora no corpo apontado, L alterna entre escala logarítmica e linear, N mostra ou esconde
-os nomes, Home devolve a vista inicial, H mostra a lista de atalhos, I abre o ensino
-ambiental, a roda dá zoom, o botão direito gira a câmera e o do meio — ou Shift com o
-direito — arrasta. P e Shift+P soltam uma sonda em órbita ou em fuga do corpo ancorado,
-T mostra o Δv Terra→Marte na data atual e Shift+T aplica a partida na sonda heliocêntrica
-ancorada, Delete descarta a sonda ancorada, F5 salva e F9 carrega.
+Para ver rodando: abra o projeto no Godot e pressione F5, ou use
+`scripts/Resolve-Godot.ps1` / `scripts/movie-smoke.ps1` no Windows. Espaço pausa, setas
+ajustam a velocidade, R volta para J2000, Tab e Shift+Tab ancoram a câmera no corpo
+seguinte e no anterior, um clique ancora no corpo apontado, L alterna entre escala
+logarítmica e linear, N mostra ou esconde os nomes, Home devolve a vista inicial, H
+mostra a lista de atalhos, I abre o ensino ambiental, a roda dá zoom, o botão direito
+gira a câmera e o do meio — ou Shift com o direito — arrasta. P e Shift+P soltam uma
+sonda em órbita ou em fuga do corpo ancorado, T mostra o Δv Terra→Marte na data atual e
+Shift+T (ou o botão Partida) aplica a partida colocando a sonda fora da SOI da Terra com
+a velocidade de Lambert, Delete descarta a sonda ancorada, F5 salva e F9 carrega.
 
 ## Como construir
 
@@ -200,9 +202,11 @@ Yarkovsky.
 
 `TransferPlanner.Preview` / `ScanWindows` e a fachada `SimBridge.PreviewTransfer` /
 `ScanTransferWindows` só consultam: duas posições, um tempo de voo, Δv de partida e de
-chegada. `SimEngine.ApplyImpulse` (e `ApplyTransferDeparture` na ponte) emenda um arco
-novo na sonda dinâmica — a mesma porta da emenda de cônicas. T mostra Terra→Marte na
-data atual; Shift+T aplica a partida se a sonda ancorada orbitar o Sol.
+chegada. `ApplyTransferDeparture` coloca a sonda **fora da SOI** do originário com a
+velocidade de Lambert (não só muda Δv no lugar errado) e emenda o arco. T / botão Δv
+consultam; Shift+T / Partida aplicam se a sonda ancorada orbitar o Sol.
+
+Scripts de apoio no Windows: `scripts/Resolve-Godot.ps1` e `scripts/movie-smoke.ps1`.
 
 ## Corpos que não vêm do arquivo
 
