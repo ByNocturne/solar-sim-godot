@@ -29,6 +29,7 @@
     <Compile Include="../Bridge/BodyFilter.cs" Link="Bridge/BodyFilter.cs" />
     <Compile Include="../Bridge/DisplayFormat.cs" Link="Bridge/DisplayFormat.cs" />
     <Compile Include="../Bridge/TeachingExplain.cs" Link="Bridge/TeachingExplain.cs" />
+    <Compile Include="../Bridge/ControlCatalog.cs" Link="Bridge/ControlCatalog.cs" />
   </ItemGroup>
 
   <!-- Mesmo arranjo para o importador de catalogo: e um executavel, mas a leitura do CSV

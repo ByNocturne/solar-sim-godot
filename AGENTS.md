@@ -39,11 +39,20 @@ sonda em órbita ou em fuga do corpo ancorado, T mostra o Δv Terra→Marte na d
 Shift+T (ou o botão Partida) aplica a partida colocando a sonda fora da SOI da Terra com
 a velocidade de Lambert, Delete descarta a sonda ancorada, F5 salva e F9 carrega.
 
+Os atalhos in-game saem de `Bridge/ControlCatalog.cs`; README e este parágrafo são
+conferidos por `ControlCatalogTests`.
+
 ## Como construir
 
 ```bash
 dotnet build          # compila motor, projeto Godot e testes
 dotnet test           # roda os testes; não exige o Godot aberto
+```
+
+Cobertura local (HTML em `coverage/report/`):
+
+```powershell
+./scripts/coverage.ps1
 ```
 
 Verificado com .NET SDK 10.0.302 e Godot 4.7.1 (variante .NET). O mínimo é o SDK 8.0.
@@ -53,13 +62,17 @@ Os dois comandos acima rodam também no GitHub Actions, a cada push e a cada pul
 `Godot.NET.Sdk` vem do NuGet.
 
 Para conferir a tela sem depender de alguém olhando, o modo Movie Maker grava a cena em
-uma sequência de PNG, no tamanho declarado em `project.godot`:
+uma sequência de PNG. No smoke (`scripts/movie-smoke.ps1`) a coreografia ancora Fobos
+(Roche), Bennu (Yarkovsky), solta uma sonda e mostra o Δv Terra→Marte — só com
+`--write-movie` / feature `movie`:
 
 ```bash
 mkdir frames   # sem a pasta o Godot falha quadro a quadro e nao grava nada
 dotnet build   # o Godot roda o assembly ja compilado, e nao recompila sozinho
-godot --path . --write-movie frames/f.png --fixed-fps 60 --quit-after 70
+godot --path . --write-movie frames/f.png --fixed-fps 60 --quit-after 300
 ```
+
+Ou no Windows: `./scripts/movie-smoke.ps1` (resolve o Godot Mono e limpa `frames/`).
 
 O `dotnet build` antes não é opcional: sem ele o Godot grava a versão anterior do código e
 o quadro parece provar que a mudança não teve efeito.
@@ -72,7 +85,7 @@ no Windows do autor:
 
 ```powershell
 $godot = "$env:LOCALAPPDATA\Microsoft\WinGet\Packages\GodotEngine.GodotEngine.Mono_Microsoft.Winget.Source_8wekyb3d8bbwe\Godot_v4.7.1-stable_mono_win64\Godot_v4.7.1-stable_mono_win64_console.exe"
-& $godot --path . --write-movie frames/f.png --fixed-fps 60 --quit-after 70
+& $godot --path . --write-movie frames/f.png --fixed-fps 60 --quit-after 300
 ```
 
 O `_console.exe` é o que devolve a saída ao terminal; o outro executável da mesma pasta
@@ -81,6 +94,8 @@ por engano custa tempo: ele não recusa o projeto, e sim falha com `No loader fo
 resource: res://Bridge/SimBridge.cs`, seguido de um erro de cena que parece corrupção de
 arquivo. `--version` distingue os dois — a variante certa imprime `stable.mono.official`.
 
+Scripts de apoio no Windows: `scripts/Resolve-Godot.ps1`, `scripts/movie-smoke.ps1` e
+`scripts/coverage.ps1`.
 ## Estrutura de projetos
 
 Quatro projetos na solução:
@@ -100,7 +115,7 @@ Essa separação é o que faz o invariante 1 ser garantido pelo compilador: `usi
 | Pasta | Responsabilidade |
 | --- | --- |
 | `Engine/` | Domínio puro: matemática orbital, tempo, estado, ambiente/habitabilidade. Zero Godot |
-| `Bridge/` | Adaptação: precisão, escala, ponte de eventos com o Godot |
+| `Bridge/` | Adaptação: precisão, escala, ponte de eventos com o Godot; `ControlCatalog` dos atalhos |
 | `Render/` | Nós visuais em 3D com projeção ortográfica |
 | `UI/` | Painéis e controles |
 | `Data/` | Dados estáticos do Sistema Solar (órbitas + perfis ambientais) na época J2000 |

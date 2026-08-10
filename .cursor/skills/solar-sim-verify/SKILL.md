@@ -17,17 +17,30 @@ dotnet test
 
 Os testes cobrem o motor e a Bridge pura sem Godot.
 
+## Cobertura (opcional, local)
+
+```powershell
+./scripts/coverage.ps1
+```
+
+HTML em `coverage/report/`. O CI não publica cobertura; isto é para achar buracos
+Bridge/UI-adjacent.
+
 ## Quando UI / Render / layout mudou
 
 1. `dotnet build` (obrigatório antes do Godot — ele não recompila sozinho).
-2. `./scripts/movie-smoke.ps1` (resolve Godot Mono via `Resolve-Godot.ps1`).
-3. Conferir frames em `frames/` para corte de painel, rótulos e linhas do inspetor.
+2. `./scripts/movie-smoke.ps1` (resolve Godot Mono; coreografia Fobos → Bennu → sonda → Δv).
+3. Conferir frames em `frames/` (~1s Fobos Roche, ~2s Bennu drift, ~3s rótulo da sonda, ~4s aviso Δv).
 
-Alvos úteis de âncora (ajustar cena/tempo se o smoke for só a vista inicial):
+## Quando atalhos / Help mudaram
 
-- Fobos — maré "em risco"
-- Bennu — drift do semi-eixo
-- Sonda após P — nome na tela
+Editar só `Bridge/ControlCatalog.cs`. Depois:
+
+```powershell
+dotnet test --filter ControlCatalog
+```
+
+O hook `.cursor/hooks/sync-controls.ps1` lembra de sincronizar README/AGENTS.
 
 ## Quando catálogo mudou
 
@@ -43,3 +56,4 @@ dotnet test --filter CatalogImporter
 - Usar Godot sem `.mono` (falha enganosa em `SimBridge.cs`).
 - Declarar UI pronta só com `--headless --quit-after`.
 - Expor `SimEngine` a partir de `UI/`.
+- Editar HelpLines em `TimeControls` — a fonte é `ControlCatalog`.

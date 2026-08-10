@@ -684,6 +684,13 @@ public partial class SimBridge : Node3D
         AddChild(controls);
         controls.Attach(this);
 
+        if (OS.HasFeature("movie"))
+        {
+            var smoke = new MovieSmokeDriver { Name = "MovieSmokeDriver" };
+            smoke.Attach(this, controls);
+            AddChild(smoke);
+        }
+
         var tree = new SystemTree { Name = "SystemTree" };
         AddChild(tree);
         tree.Attach(this);

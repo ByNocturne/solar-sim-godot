@@ -19,29 +19,6 @@ public partial class TimeControls : CanvasLayer
     /// <summary>Presets de velocidade, em segundos simulados por segundo real.</summary>
     private static readonly double[] SpeedPresets = [1.0, 1.0e3, 1.0e5, 1.0e7];
 
-    private static readonly string[] HelpLines =
-    [
-        "Espaço: pausa e retoma",
-        "Setas: dobra e divide a velocidade",
-        "R: volta para J2000",
-        "Tab / Shift+Tab: ancora no corpo seguinte ou anterior",
-        "Clique: ancora no corpo apontado",
-        "L: alterna escala logarítmica e linear",
-        "N: mostra ou esconde os nomes",
-        "Home: devolve a vista inicial",
-        "Roda: zoom",
-        "Botão direito: orbita a câmera",
-        "Botão do meio / Shift+direito: arrasta",
-        "Home: devolve a vista inicial (solta a âncora)",
-        "P / Shift+P: solta uma sonda em órbita ou em fuga",
-        "T: preview Δv Terra→Marte    Shift+T: aplica partida na sonda",
-        "Delete: descarta a sonda ancorada",
-        "F5 / F9: salva e carrega",
-        "I: análise ambiental do corpo ancorado",
-        "H: mostra ou esconde esta ajuda",
-        "Passe o mouse nos rótulos do inspetor para o glossário",
-    ];
-
     /// <summary>
     /// Tempo de voo Hohmann Terra→Marte aproximado, em dias. É o valor clássico da
     /// literatura (~259 d) e o que o preview de teclado usa.
@@ -391,6 +368,9 @@ public partial class TimeControls : CanvasLayer
             : "Não há nada gravado para carregar.");
     }
 
+    /// <summary>Aviso temporário na barra (missões e smoke do Movie Maker).</summary>
+    public void ShowNotice(string message) => Notify(message);
+
     private void Notify(string message)
     {
         _notice.Text = message;
@@ -409,7 +389,7 @@ public partial class TimeControls : CanvasLayer
 
         lines.AddChild(Panels.Title("Controles"));
 
-        foreach (var line in HelpLines)
+        foreach (var line in ControlCatalog.HelpLines)
         {
             lines.AddChild(Panels.Caption(line));
         }

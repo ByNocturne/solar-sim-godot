@@ -12,6 +12,61 @@ namespace SolarSim.Tests;
 public sealed class LambertTransferTests
 {
     /// <summary>
+    /// Tempo de voo curto demais para a elipse mínima cai no ramo hiperbólico (z &lt; 0)
+    /// e ainda assim chega a r₂ — cobre Stumpff com Cosh/Sinh.
+    /// </summary>
+    [Fact]
+    public void TempoDeVooCurtoProduzTransferenciaHiperbolicaQueChega()
+    {
+        var mu = AstroConstants.SunMuKm3S2;
+        var r1 = new Vector3D(AstroConstants.AstronomicalUnitKm, 0.0, 0.0);
+        var r2 = new Vector3D(
+            0.3 * AstroConstants.AstronomicalUnitKm,
+            1.1 * AstroConstants.AstronomicalUnitKm,
+            0.0);
+        var tofDays = 25.0;
+        var tofSeconds = tofDays * AstroConstants.SecondsPerDay;
+
+        var solution = LambertSolver.TrySolve(r1, r2, tofSeconds, mu, shortWay: true);
+
+        Assert.NotNull(solution);
+
+        var elements = OrbitDetermination.ElementsFrom(
+            new StateVector(r1, solution!.Value.DepartureVelocityKmS),
+            mu,
+            daysSinceEpoch: 0.0);
+
+        Assert.True(
+            elements.Eccentricity > 1.0,
+            $"Esperava hipérbole (e>1); veio e={elements.Eccentricity:F4}.");
+        Assert.True(elements.SemiMajorAxisKm < 0.0);
+
+        var arrived = KeplerPropagator.StateAt(elements, mu, tofDays);
+        var miss = (arrived.PositionKm - r2).Magnitude;
+
+        Assert.True(
+            miss < 5_000.0,
+            $"Chegou a {miss:N0} km de distância do alvo.");
+    }
+
+    /// <summary>
+    /// Stumpff com z negativo usa Cosh/Sinh — o ramo que a cobertura marcava vermelho.
+    /// </summary>
+    [Fact]
+    public void StumpffHiperbolicoCoincideComCoshSinh()
+    {
+        var z = -4.0;
+        var sqrtNegZ = 2.0;
+        var (c2, c3) = LambertSolver.Stumpff(z);
+
+        Assert.Equal((Math.Cosh(sqrtNegZ) - 1.0) / -z, c2, precision: 12);
+        Assert.Equal(
+            (Math.Sinh(sqrtNegZ) - sqrtNegZ) / (-z * sqrtNegZ),
+            c3,
+            precision: 12);
+    }
+
+    /// <summary>
     /// Transferência entre duas posições fora do alinhamento: a sonda que parte com a
     /// velocidade de Lambert chega à segunda posição no tempo pedido.
     /// </summary>

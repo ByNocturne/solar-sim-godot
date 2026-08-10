@@ -37,9 +37,7 @@ Smoke visual (Movie Maker):
 
 ## Controles (resumo)
 
-Espaço pausa · setas velocidade · R J2000 · Tab âncora · L escala · N nomes · Home vista
-· H ajuda · I ensino · P / Shift+P sonda · T / Shift+T Terra→Marte · Delete descarta ·
-F5 / F9 save/load · direito orbita · meio / Shift+direito arrasta · roda zoom.
+Espaço pausa · setas velocidade · R J2000 · Tab âncora · L escala · N nomes · Home vista · H ajuda · I ensino · P / Shift+P sonda · T / Shift+T Terra→Marte · Delete descarta · F5 / F9 save/load · direito orbita · meio / Shift+direito arrasta · roda zoom.
 
 ## Arquitetura
 

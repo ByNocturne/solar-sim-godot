@@ -33,9 +33,10 @@ frames/
 Ideias para o futuro.txt
 metodo-de-trabalho.md
 
-# Resultados de teste
+# Resultados de teste e cobertura local (scripts/coverage.ps1)
 TestResults/
 *.trx
+coverage/
 coverage*.xml
 *.coverage
 
